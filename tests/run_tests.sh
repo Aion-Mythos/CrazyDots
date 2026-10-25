@@ -16,9 +16,18 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/components/StyledRect.qml" \
     "$SCRIPT_DIR/shell/components/StyledText.qml" \
     "$SCRIPT_DIR/shell/components/ButtonBase.qml" \
+    "$SCRIPT_DIR/shell/panels/Bar.qml" \
+    "$SCRIPT_DIR/shell/panels/bar/BarPill.qml" \
+    "$SCRIPT_DIR/shell/panels/bar/Workspaces.qml" \
+    "$SCRIPT_DIR/shell/panels/bar/ActiveWindow.qml" \
+    "$SCRIPT_DIR/shell/panels/bar/ClockWidget.qml" \
+    "$SCRIPT_DIR/shell/panels/bar/AudioWidget.qml" \
+    "$SCRIPT_DIR/shell/panels/bar/BatteryWidget.qml" \
+    "$SCRIPT_DIR/shell/panels/bar/TrayWidget.qml" \
     "$SCRIPT_DIR/shell/TestThemeEngine.qml" \
     "$SCRIPT_DIR/shell/TestConfig.qml" \
-    "$SCRIPT_DIR/shell/TestBaseComponents.qml"
+    "$SCRIPT_DIR/shell/TestBaseComponents.qml" \
+    "$SCRIPT_DIR/shell/TestBar.qml"
 
 echo "==> qmllint passed with 0 errors!"
 
@@ -31,7 +40,10 @@ quickshell -p "$SCRIPT_DIR/shell/TestConfig.qml"
 echo "==> 4. Executing M3 Shell Base & Components test suite in Quickshell..."
 quickshell -p "$SCRIPT_DIR/shell/TestBaseComponents.qml"
 
-echo "==> 5. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
+echo "==> 5. Executing M4 Desktop Bar test suite in Quickshell..."
+quickshell -p "$SCRIPT_DIR/shell/TestBar.qml"
+
+echo "==> 6. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
 # Start shell.qml in background with isolated config path
 quickshell -p "$SCRIPT_DIR/shell" &
 SHELL_PID=$!
@@ -41,6 +53,8 @@ sleep 1.2
 IPC_PING=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots ping)
 IPC_THEME=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getTheme)
 IPC_SCREENS=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getScreenCount)
+IPC_BAR_POS=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getBarPosition)
+IPC_BAR_FLOAT=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isBarFloating)
 
 # Terminate test instance cleanly
 kill "$SHELL_PID" 2>/dev/null || true
@@ -49,13 +63,15 @@ wait "$SHELL_PID" 2>/dev/null || true
 echo "    IPC ping response: $IPC_PING"
 echo "    IPC getTheme response: $IPC_THEME"
 echo "    IPC getScreenCount response: $IPC_SCREENS"
+echo "    IPC getBarPosition response: $IPC_BAR_POS"
+echo "    IPC isBarFloating response: $IPC_BAR_FLOAT"
 
 if [[ "$IPC_PING" != *"pong"* ]]; then
     echo "ERROR: IPC ping failed!" >&2
     exit 1
 fi
 
-echo "==> 6. Verifying live environment integrity..."
+echo "==> 7. Verifying live environment integrity..."
 # Check that ~/.config/hypr and Caelestia are untouched
 if [[ ! -f "$HOME/.config/hypr/hyprland.lua" ]]; then
     echo "ERROR: ~/.config/hypr/hyprland.lua missing!" >&2

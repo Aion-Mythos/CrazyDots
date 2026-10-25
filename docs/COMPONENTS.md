@@ -47,6 +47,17 @@ All components consume values from `Tokens.qml` and `Theme.qml`. Hardcoded pixel
 
 ### 2.2 Panels (`shell/panels/`)
 - **`Bar.qml`**: Desktop taskbar containing workspaces, clock, tray, battery, and audio controls.
+
+#### 2.2.1 Bar Sub-Widgets (`shell/panels/bar/`)
+- **`BarPill.qml`**: Interactive capsule container handling hover, press, click, and mouse wheel actions with smooth color transitions.
+- **`Workspaces.qml`**: Hyprland workspace indicator with elastic spring-expanding active pills, special workspace filtering, ascending ID ordering, click activation, and mouse wheel cycling.
+- **`ActiveWindow.qml`**: Focused window title display with status dot, elision bounds, and graceful empty-state desktop handling.
+- **`ClockWidget.qml`**: Digital clock and calendar date display with jitter-free monospace typography.
+- **`AudioWidget.qml`**: Pipewire volume meter with dynamic volume glyphs, mute toggling on click, and 5% scroll step adjustments.
+- **`BatteryWidget.qml`**: UPower battery indicator with charging/discharging states, capacity thresholds, low-battery warning, and automatic collapse on desktop systems.
+- **`TrayWidget.qml`**: StatusNotifierItem (SNI) system tray with icon rendering via `Quickshell.Widgets.IconImage` and left/right click actions.
+
+### 2.3 Drawers & Modals (Future Milestones)
 - **`Launcher.qml`**: Modal application launcher with live search input, keyboard navigation, and application delegates.
 - **`Dashboard.qml`**: Corner slide-in control center containing quick toggles, audio sink selectors, and MPRIS media player.
 - **`WallpaperManager.qml`**: Visual wallpaper selector with thumbnail grid and dynamic theme trigger.

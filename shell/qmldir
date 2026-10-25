@@ -4,3 +4,4 @@ singleton Theme 1.0 Theme.qml
 singleton Config 1.0 Config.qml
 Main 1.0 Main.qml
 ScreenCanvas 1.0 ScreenCanvas.qml
+Bar 1.0 panels/Bar.qml

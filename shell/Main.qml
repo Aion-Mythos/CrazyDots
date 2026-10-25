@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "."
 import "services"
+import "panels"
 
 /**
  * Main.qml
@@ -57,6 +58,22 @@ Item {
             return Quickshell.screens.length;
         }
 
+        function getBarPosition(): string {
+            return Config.barPosition;
+        }
+
+        function setBarPosition(pos: string): bool {
+            return Config.setBarPosition(pos);
+        }
+
+        function isBarFloating(): bool {
+            return Config.barFloating;
+        }
+
+        function setBarFloating(floating: bool): bool {
+            return Config.setBarFloating(floating);
+        }
+
         function getScreens() {
             const list = [];
             for (let i = 0; i < Quickshell.screens.length; i++) {
@@ -83,6 +100,30 @@ Item {
             ScreenCanvas {
                 required property var modelData
                 screen: modelData
+            }
+        }
+    }
+
+    // =========================================================================
+    // MULTI-MONITOR DESKTOP BAR INSTANTIATION
+    // Mounts an independent desktop bar on each connected display.
+    // =========================================================================
+    Variants {
+        id: barVariants
+        model: Quickshell.screens
+
+        delegate: Component {
+            Bar {
+                required property var modelData
+                screen: modelData
+
+                onLauncherTriggered: {
+                    console.log("crazydots: Launcher triggered from Bar on screen", modelData ? modelData.name : "");
+                }
+
+                onDashboardTriggered: {
+                    console.log("crazydots: Dashboard triggered from Bar on screen", modelData ? modelData.name : "");
+                }
             }
         }
     }

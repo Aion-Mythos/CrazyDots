@@ -1,0 +1,8 @@
+module crazydots.panels.bar
+BarPill 1.0 BarPill.qml
+Workspaces 1.0 Workspaces.qml
+ActiveWindow 1.0 ActiveWindow.qml
+ClockWidget 1.0 ClockWidget.qml
+AudioWidget 1.0 AudioWidget.qml
+BatteryWidget 1.0 BatteryWidget.qml
+TrayWidget 1.0 TrayWidget.qml

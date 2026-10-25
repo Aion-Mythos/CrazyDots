@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.5.0] - 2026-10-25 - Milestone M4: Desktop Bar
+
+#### Added
+- Dedicated layer-shell Desktop Bar window in `shell/panels/Bar.qml`:
+  - Operates as a per-monitor `PanelWindow` on `WlrLayer.Top` anchored to screen edge (`top` or `bottom`).
+  - Claims precise layer-shell exclusive zone (`WlrLayershell.exclusiveZone`) for Hyprland window tiling reservation.
+  - Dynamic input masking (`mask: Region { item: barCard }`) guaranteeing that pointer clicks in floating margins pass through to underlying windows.
+  - Supports configurable heights, docked edge or floating island modes, and dynamic theme opacity.
+- Modular bar sub-widgets in `shell/panels/bar/`:
+  - `BarPill.qml`: Reusable capsule container with hover, press, click, and mouse wheel handling.
+  - `Workspaces.qml`: Hyprland workspace indicator with elastic spring pill animations, special workspace filtering, ascending ID ordering, click activation, and mouse wheel cycling.
+  - `ActiveWindow.qml`: Active window title widget with smooth elision, status dot, and graceful empty-state handling.
+  - `ClockWidget.qml`: Digital clock and calendar date widget with jitter-free monospace formatting.
+  - `AudioWidget.qml`: Pipewire audio meter with dynamic volume glyphs, mute toggling on click, and 5% scroll step adjustments.
+  - `BatteryWidget.qml`: UPower battery indicator with charging/discharging states, capacity thresholds, low-battery warning, and automatic collapse on desktop systems.
+  - `TrayWidget.qml`: StatusNotifierItem (SNI) system tray with icon rendering via `Quickshell.Widgets.IconImage` and left/right click actions.
+- Multi-monitor bar instantiation coordinated in `shell/Main.qml` via `Variants`.
+- Extended IPC handler with `getBarPosition()`, `setBarPosition()`, `isBarFloating()`, and `setBarFloating()`.
+- Automated test suite `shell/TestBar.qml` (32 passing assertions) covering geometry, anchoring, widgets, and dynamic responsiveness.
+- Updated `tests/run_tests.sh` with M4 verification, bringing total test suite assertions to 111 passing tests with 0 errors.
+
 ### [0.4.0] - 2026-10-25 - Milestone M3: Quickshell Entry Point & Shell Base
 
 #### Added
