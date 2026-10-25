@@ -88,6 +88,12 @@ QtObject {
     property int dashboardHeight: 520              // 300 to 1200 pixels
 
     // =========================================================================
+    // 7. TERMINAL INTEGRATION (GHOSTTY)
+    // =========================================================================
+    property string terminalCommand: "ghostty"            // Executable command name or path
+    property string terminalAppId: "com.mitchellh.ghostty" // Desktop entry ID for icon/metadata lookup
+
+    // =========================================================================
     // ATOMIC FILE VIEW & DEBOUNCE TIMER
     // =========================================================================
     property FileView fileView: FileView {
@@ -162,6 +168,10 @@ QtObject {
             corner: "top-right",
             width: 380,
             height: 520
+        },
+        terminal: {
+            command: "ghostty",
+            appId: "com.mitchellh.ghostty"
         }
     })
 
@@ -266,6 +276,16 @@ QtObject {
             }
         }
 
+        // --- Terminal validation ---
+        if (raw.terminal && typeof raw.terminal === "object") {
+            if (typeof raw.terminal.command === "string" && raw.terminal.command.trim().length > 0) {
+                res.terminal.command = raw.terminal.command.trim();
+            }
+            if (typeof raw.terminal.appId === "string" && raw.terminal.appId.trim().length > 0) {
+                res.terminal.appId = raw.terminal.appId.trim();
+            }
+        }
+
         return res;
     }
 
@@ -304,6 +324,11 @@ QtObject {
         root.dashboardCorner = clean.dashboard.corner;
         root.dashboardWidth = clean.dashboard.width;
         root.dashboardHeight = clean.dashboard.height;
+
+        if (clean.terminal) {
+            root.terminalCommand = clean.terminal.command;
+            root.terminalAppId = clean.terminal.appId;
+        }
 
         // Sync theme with Theme singleton if valid
         Theme.setTheme(clean.theme.name);
@@ -354,6 +379,10 @@ QtObject {
                 corner: root.dashboardCorner,
                 width: root.dashboardWidth,
                 height: root.dashboardHeight
+            },
+            terminal: {
+                command: root.terminalCommand,
+                appId: root.terminalAppId
             }
         };
     }
@@ -524,6 +553,24 @@ QtObject {
         const clamped = Math.max(300, Math.min(1200, h));
         if (root.dashboardHeight === clamped) return true;
         root.dashboardHeight = clamped;
+        root.saveDebounced(350);
+        return true;
+    }
+
+    function setTerminalCommand(cmd: string): bool {
+        if (!cmd || typeof cmd !== "string" || cmd.trim().length === 0) return false;
+        const clean = cmd.trim();
+        if (root.terminalCommand === clean) return true;
+        root.terminalCommand = clean;
+        root.saveDebounced(350);
+        return true;
+    }
+
+    function setTerminalAppId(id: string): bool {
+        if (!id || typeof id !== "string" || id.trim().length === 0) return false;
+        const clean = id.trim();
+        if (root.terminalAppId === clean) return true;
+        root.terminalAppId = clean;
         root.saveDebounced(350);
         return true;
     }

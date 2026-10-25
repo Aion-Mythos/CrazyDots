@@ -103,6 +103,14 @@ Item {
         id: themeEngine
     }
 
+    HyprlandService {
+        id: hyprlandService
+    }
+
+    TerminalService {
+        id: terminalService
+    }
+
     // =========================================================================
     // SAFE IPC INTERFACE
     // Exposes controlled methods for external scripts, keybinds, and debugging.
@@ -264,6 +272,56 @@ Item {
         function setDashboardHeight(h: int): bool {
             return Config.setDashboardHeight(h);
         }
+
+        // Hyprland Integration IPC API
+        function isHyprlandAvailable(): bool {
+            return hyprlandService.isAvailable;
+        }
+
+        function getActiveWorkspace() {
+            return hyprlandService.getActiveWorkspace();
+        }
+
+        function getWorkspaces() {
+            return hyprlandService.getWorkspaces();
+        }
+
+        function getActiveWindow() {
+            return hyprlandService.getActiveWindow();
+        }
+
+        function focusWorkspace(id: int): bool {
+            return hyprlandService.focusWorkspace(id);
+        }
+
+        function dispatchHyprland(request: string): bool {
+            return hyprlandService.dispatch(request);
+        }
+
+        // Terminal (Ghostty) Integration IPC API
+        function isTerminalAvailable(): bool {
+            return terminalService.isTerminalAvailable;
+        }
+
+        function getTerminalCommand(): string {
+            return Config.terminalCommand;
+        }
+
+        function setTerminalCommand(cmd: string): bool {
+            return Config.setTerminalCommand(cmd);
+        }
+
+        function getTerminalAppId(): string {
+            return Config.terminalAppId;
+        }
+
+        function setTerminalAppId(id: string): bool {
+            return Config.setTerminalAppId(id);
+        }
+
+        function launchTerminal(): bool {
+            return terminalService.launchTerminal();
+        }
     }
 
     // =========================================================================
@@ -301,6 +359,9 @@ Item {
                 onWallpaperManagerCloseRequested: root.closeWallpaperManager()
                 onDashboardCloseRequested: root.closeDashboard()
                 onWallpaperManagerRequested: root.openWallpaperManager()
+                onTerminalLaunchRequested: function() {
+                    terminalService.launchTerminal();
+                }
                 onDynamicColorsRequested: function(path) {
                     themeEngine.extractFromWallpaper(path);
                 }

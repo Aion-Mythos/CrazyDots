@@ -13,6 +13,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/ScreenCanvas.qml" \
     "$SCRIPT_DIR/shell/shell.qml" \
     "$SCRIPT_DIR/shell/services/ThemeEngine.qml" \
+    "$SCRIPT_DIR/shell/services/HyprlandService.qml" \
+    "$SCRIPT_DIR/shell/services/TerminalService.qml" \
     "$SCRIPT_DIR/shell/components/StyledRect.qml" \
     "$SCRIPT_DIR/shell/components/StyledText.qml" \
     "$SCRIPT_DIR/shell/components/ButtonBase.qml" \
@@ -34,7 +36,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/TestBar.qml" \
     "$SCRIPT_DIR/shell/TestLauncher.qml" \
     "$SCRIPT_DIR/shell/TestWallpaper.qml" \
-    "$SCRIPT_DIR/shell/TestDashboard.qml"
+    "$SCRIPT_DIR/shell/TestDashboard.qml" \
+    "$SCRIPT_DIR/shell/TestHyprlandGhostty.qml"
 
 echo "==> qmllint passed with 0 errors!"
 
@@ -59,7 +62,10 @@ quickshell -p "$SCRIPT_DIR/shell/TestWallpaper.qml"
 echo "==> 8. Executing M7 Corner Dashboard & Quick Settings test suite in Quickshell..."
 quickshell -p "$SCRIPT_DIR/shell/TestDashboard.qml"
 
-echo "==> 9. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
+echo "==> 9. Executing M8 Hyprland & Ghostty Integration test suite in Quickshell..."
+quickshell -p "$SCRIPT_DIR/shell/TestHyprlandGhostty.qml"
+
+echo "==> 10. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
 # Start shell.qml in background with isolated config path
 quickshell -p "$SCRIPT_DIR/shell" &
 SHELL_PID=$!
@@ -103,6 +109,12 @@ IPC_LAUNCH_AFTER_DASH=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isL
 IPC_DASH_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closeDashboard)
 IPC_DASH_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isDashboardOpen)
 
+# Hyprland & Terminal (Ghostty) IPC verification
+IPC_HYPR_AVAIL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isHyprlandAvailable)
+IPC_TERM_AVAIL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isTerminalAvailable)
+IPC_TERM_CMD=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getTerminalCommand)
+IPC_TERM_APPID=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getTerminalAppId)
+
 # Terminate test instance cleanly
 kill "$SHELL_PID" 2>/dev/null || true
 wait "$SHELL_PID" 2>/dev/null || true
@@ -136,6 +148,10 @@ echo "    IPC isDashboardOpen after launcher open: $IPC_DASH_AFTER_LAUNCH"
 echo "    IPC isLauncherOpen after launcher open: $IPC_LAUNCH_CHECK"
 echo "    IPC isLauncherOpen after dashboard reopen: $IPC_LAUNCH_AFTER_DASH"
 echo "    IPC isDashboardOpen after close: $IPC_DASH_FINAL"
+echo "    IPC isHyprlandAvailable: $IPC_HYPR_AVAIL"
+echo "    IPC isTerminalAvailable: $IPC_TERM_AVAIL"
+echo "    IPC getTerminalCommand: $IPC_TERM_CMD"
+echo "    IPC getTerminalAppId: $IPC_TERM_APPID"
 
 if [[ "$IPC_PING" != *"pong"* ]]; then
     echo "ERROR: IPC ping failed!" >&2
@@ -167,7 +183,17 @@ if [[ "$IPC_DASH_AFTER_LAUNCH" != *"false"* || "$IPC_LAUNCH_AFTER_DASH" != *"fal
     exit 1
 fi
 
-echo "==> 10. Verifying live environment integrity..."
+if [[ "$IPC_HYPR_AVAIL" != *"true"* ]]; then
+    echo "ERROR: IPC isHyprlandAvailable failed!" >&2
+    exit 1
+fi
+
+if [[ "$IPC_TERM_AVAIL" != *"true"* || "$IPC_TERM_CMD" != *"ghostty"* ]]; then
+    echo "ERROR: IPC Ghostty terminal check failed!" >&2
+    exit 1
+fi
+
+echo "==> 11. Verifying live environment integrity..."
 # Check that ~/.config/hypr and Caelestia are untouched
 if [[ ! -f "$HOME/.config/hypr/hyprland.lua" ]]; then
     echo "ERROR: ~/.config/hypr/hyprland.lua missing!" >&2

@@ -61,3 +61,9 @@ All components consume values from `Tokens.qml` and `Theme.qml`. Hardcoded pixel
 - **`BatteryWidget.qml`**: UPower battery indicator with charging/discharging states, capacity thresholds, low-battery warning, and automatic collapse on desktop systems.
 - **`TrayWidget.qml`**: StatusNotifierItem (SNI) system tray with icon rendering via `Quickshell.Widgets.IconImage` and left/right click actions.
 
+### 2.3 Services (`shell/services/`)
+- **`ThemeEngine.qml`**: Headless coordinator managing dynamic themes, Matugen JSON palettes, and native ColorQuantizer wallpaper extraction.
+- **`HyprlandService.qml`**: Central compositor service exposing sanitized workspace, toplevel window, monitor states, and safe dispatchers.
+- **`TerminalService.qml`**: Terminal launch integration for Ghostty and preferred terminal emulators with DesktopEntry and Process fallbacks.
+
+

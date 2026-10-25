@@ -53,8 +53,31 @@ crazydots maintains persistent configuration in `~/.config/crazydots/config.json
     "corner": "top-right",
     "width": 380,
     "height": 520
+  },
+  "terminal": {
+    "command": "ghostty",
+    "appId": "com.mitchellh.ghostty"
   }
 }
+```
+
+---
+
+## 3. Terminal & Hyprland Integration Settings
+
+### 3.1 Terminal Configuration (`terminal`)
+- `command`: Name of the binary or executable path to spawn when launching terminal actions (default: `"ghostty"`).
+- `appId`: Desktop entry application ID used for desktop file execution and icon resolution (default: `"com.mitchellh.ghostty"`).
+
+### 3.2 Optional Hyprland Keybinding Snippet
+crazydots does not automatically edit your active compositor configuration. To bind crazydots actions to Hyprland hotkeys in your configuration, you may optionally add lines similar to:
+
+```ini
+# Optional crazydots shortcuts (manual configuration)
+bind = $mainMod, SPACE, exec, quickshell ipc -p ~/.config/crazydots/shell call crazydots toggleLauncher
+bind = $mainMod, D, exec, quickshell ipc -p ~/.config/crazydots/shell call crazydots toggleDashboard
+bind = $mainMod, W, exec, quickshell ipc -p ~/.config/crazydots/shell call crazydots toggleWallpaperManager
+bind = $mainMod, RETURN, exec, quickshell ipc -p ~/.config/crazydots/shell call crazydots launchTerminal
 ```
 
 ---

@@ -28,6 +28,23 @@ This document describes the quality assurance strategy for crazydots.
   - Offline network (network indicator shows disconnected).
   - No active MPRIS players (media widget collapses cleanly).
   - Missing `matugen` executable (falls back to static color themes).
+  - Missing or disconnected Hyprland compositor (graceful fallback without invented state).
+  - Missing or failing terminal emulator (graceful fallback without shell crashes).
+
+---
+
+## 2. Automated Test Suite (`tests/run_tests.sh`)
+- Automated execution of all unit and integration test harnesses:
+  - `TestThemeEngine.qml` (M1: 29 assertions)
+  - `TestConfig.qml` (M2: 32 assertions)
+  - `TestBaseComponents.qml` (M3: 20 assertions)
+  - `TestBar.qml` (M4: 29 assertions)
+  - `TestLauncher.qml` (M5: 30 assertions)
+  - `TestWallpaper.qml` (M6: 39 assertions)
+  - `TestDashboard.qml` (M7: 47 assertions)
+  - `TestHyprlandGhostty.qml` (M8: 36 assertions)
+- Combined suite executes **262 automated assertions** with 0 failures.
+- End-to-end live Quickshell process lifecycle and IPC protocol verification.
 
 ---
 

@@ -36,6 +36,7 @@ PanelWindow {
     signal dashboardCloseRequested()
     signal dynamicColorsRequested(string path)
     signal wallpaperManagerRequested()
+    signal terminalLaunchRequested()
 
     // Multi-monitor active screen coordination
     readonly property bool isCurrentMonitor: {
@@ -249,6 +250,7 @@ PanelWindow {
 
             onCloseRequested: canvas.dashboardCloseRequested()
             onWallpaperManagerRequested: canvas.wallpaperManagerRequested()
+            onTerminalLaunchRequested: canvas.terminalLaunchRequested()
 
             onActiveChanged: {
                 if (active) {

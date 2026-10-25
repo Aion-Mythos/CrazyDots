@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.9.0] - 2026-10-25 - Milestone M8: Hyprland & Ghostty Integration
+
+#### Added
+- Dedicated Hyprland Integration Service in `shell/services/HyprlandService.qml`:
+  - Direct reactive binding to `Quickshell.Hyprland` singleton without duplicate competing state.
+  - Sanitized snapshots for `getActiveWorkspace()`, `getWorkspaces()`, `getActiveWindow()`, and monitor state.
+  - Native workspace activation via `HyprlandWorkspace.activate()` avoiding fragile string parsing and syntax mismatches under Lua compositor configurations.
+  - Validation on `focusWorkspace(id)` rejecting non-positive and non-numeric inputs.
+  - Safe dispatcher invocation `dispatch(request)` rejecting multi-line, semicolon, and ampersand command chaining injections.
+  - Compositor disconnect and unavailable state handling without UI crashes or invented state.
+- Dedicated Terminal Integration Service in `shell/services/TerminalService.qml`:
+  - Truthful availability probe for configured terminal emulator via `Process` + `StdioCollector` and `which`.
+  - Primary launch path using `DesktopEntry.execute()` via `DesktopEntries.applications` matching `Config.terminalAppId`.
+  - Secondary fallback spawning binary directly via `Process` with argument array (zero shell interpretation).
+  - Emits `terminalLaunched` and `terminalLaunchFailed` signals.
+- Configurable Terminal Preferences in `shell/Config.qml`:
+  - `terminalCommand` (default: `"ghostty"`) and `terminalAppId` (default: `"com.mitchellh.ghostty"`).
+  - Setters `setTerminalCommand()` and `setTerminalAppId()` with validation, persistence, and backwards compatibility.
+- Corner Dashboard Terminal Action in `shell/panels/Dashboard.qml`:
+  - Added "TERMINAL EMULATOR" card displaying configured terminal command and one-click "Launch" button.
+- Extended IPC interface in `shell/Main.qml`:
+  - `isHyprlandAvailable()`, `getActiveWorkspace()`, `getWorkspaces()`, `getActiveWindow()`, `focusWorkspace(id)`, `dispatchHyprland(request)`.
+  - `isTerminalAvailable()`, `getTerminalCommand()`, `setTerminalCommand(cmd)`, `getTerminalAppId()`, `setTerminalAppId(id)`, `launchTerminal()`.
+- Automated test suite `shell/TestHyprlandGhostty.qml` (36 passing assertions) verifying Hyprland availability, workspace/window state truthfulness, dispatch safety, terminal configuration persistence, and safe process launching.
+- Updated `tests/run_tests.sh` to run static analysis (`qmllint`) and test suites M1 through M8, totaling **262 passing assertions with 0 errors**.
+- Updated documentation in `docs/COMPONENTS.md`, `docs/CONFIGURATION.md`, `docs/DEPENDENCIES.md`, `docs/TESTING.md`, and `docs/TROUBLESHOOTING.md`.
+
 ### [0.8.0] - 2026-10-25 - Milestone M7: Corner Dashboard & Quick Settings
 
 #### Added

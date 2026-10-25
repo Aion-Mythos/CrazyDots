@@ -31,6 +31,7 @@ Item {
 
     signal closeRequested()
     signal wallpaperManagerRequested()
+    signal terminalLaunchRequested()
 
     implicitWidth: Config.dashboardWidth
     implicitHeight: Config.dashboardHeight
@@ -572,7 +573,87 @@ Item {
                 }
 
                 // -------------------------------------------------------------
-                // 5. MOTION & ANIMATION PREFERENCES
+                // 5. TERMINAL INTEGRATION (GHOSTTY)
+                // -------------------------------------------------------------
+                Column {
+                    width: parent.width
+                    spacing: Tokens.spaceSm
+
+                    Text {
+                        text: "TERMINAL EMULATOR"
+                        font.family: Tokens.fontFamilyMono
+                        font.pixelSize: Tokens.fontXs
+                        font.weight: Tokens.weightBold
+                        color: Theme.mutedForeground
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: 48
+                        radius: Tokens.radiusSm
+                        color: Theme.alpha(Theme.surface, 0.7)
+                        border.color: Theme.border
+                        border.width: Tokens.borderWidthThin
+
+                        Row {
+                            anchors.fill: parent
+                            anchors.margins: Tokens.spaceSm
+                            spacing: Tokens.spaceSm
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "󰞷"
+                                font.family: Tokens.fontFamilyMono
+                                font.pixelSize: Tokens.fontLg
+                                color: Theme.accent
+                            }
+
+                            Column {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 130
+                                spacing: 2
+
+                                Text {
+                                    text: Config.terminalCommand === "ghostty" ? "Ghostty Terminal" : Config.terminalCommand
+                                    font.family: Tokens.fontFamilySans
+                                    font.pixelSize: Tokens.fontXs
+                                    font.weight: Tokens.weightMedium
+                                    color: Theme.foreground
+                                    elide: Text.ElideRight
+                                    width: parent.width
+                                }
+
+                                Text {
+                                    text: "Command: " + Config.terminalCommand
+                                    font.family: Tokens.fontFamilyMono
+                                    font.pixelSize: 10
+                                    color: Theme.mutedForeground
+                                }
+                            }
+
+                            // Launch Terminal Button
+                            ButtonBase {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Launch"
+                                primary: false
+                                onClicked: {
+                                    root.closeRequested();
+                                    root.terminalLaunchRequested();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Divider
+                Rectangle {
+                    width: parent.width
+                    height: Tokens.borderWidthThin
+                    color: Theme.alpha(Theme.border, 0.5)
+                }
+
+                // -------------------------------------------------------------
+                // 6. MOTION & ANIMATION PREFERENCES
                 // -------------------------------------------------------------
                 Column {
                     width: parent.width

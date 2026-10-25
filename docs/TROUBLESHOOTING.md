@@ -44,3 +44,15 @@ quickshell list --all
   ```
   bind = SUPER, Space, global, crazydots:launcher
   ```
+
+### 2.5 Hyprland Lua Configuration Dispatching
+- **Cause**: Hyprland 0.56.2 with Lua configuration interprets raw socket strings as Lua expressions (`return hl.dispatch(...)`).
+- **Fix**: crazydots uses native `HyprlandWorkspace.activate()` for workspace switching, bypassing string evaluation entirely. For arbitrary dispatcher commands via IPC, verify that the string matches the syntax expected by your Hyprland configuration (e.g. `hl.dsp.no_op()`).
+
+### 2.6 Terminal Emulator Launch Configuration
+- **Cause**: Preferred terminal (Ghostty) binary not found on `$PATH` or custom terminal desired.
+- **Fix**: Configure `terminal.command` and `terminal.appId` in `~/.config/crazydots/config.json`, or dynamically update via IPC:
+  ```bash
+  quickshell ipc -p ~/.config/crazydots/shell call crazydots setTerminalCommand alacritty
+  quickshell ipc -p ~/.config/crazydots/shell call crazydots setTerminalAppId org.alacritty
+  ```
