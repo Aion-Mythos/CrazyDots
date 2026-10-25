@@ -1,0 +1,19 @@
+{
+  "name": "tokyo-night",
+  "displayName": "Tokyo Night",
+  "background": "#1a1b26",
+  "surface": "#16161e",
+  "surfaceElevated": "#24283b",
+  "foreground": "#c0caf5",
+  "mutedForeground": "#7aa2f7",
+  "accent": "#7aa2f7",
+  "accentSecondary": "#bb9af7",
+  "border": "#292e42",
+  "borderFocus": "#7dcfff",
+  "selection": "#33467c",
+  "selectionForeground": "#ffffff",
+  "success": "#9ece6a",
+  "warning": "#e0af68",
+  "error": "#f7768e",
+  "shadow": "#101014"
+}

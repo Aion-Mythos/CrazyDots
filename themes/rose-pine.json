@@ -1,0 +1,19 @@
+{
+  "name": "rose-pine",
+  "displayName": "Rosé Pine",
+  "background": "#191724",
+  "surface": "#1f1d2e",
+  "surfaceElevated": "#26233a",
+  "foreground": "#e0def4",
+  "mutedForeground": "#908caa",
+  "accent": "#ebbcba",
+  "accentSecondary": "#31748f",
+  "border": "#524f67",
+  "borderFocus": "#ebbcba",
+  "selection": "#403d52",
+  "selectionForeground": "#e0def4",
+  "success": "#9ccfd8",
+  "warning": "#f6c177",
+  "error": "#eb6f92",
+  "shadow": "#12101b"
+}

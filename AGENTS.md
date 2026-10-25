@@ -8,7 +8,18 @@ crazydots is a standalone, modular, native Quickshell desktop shell for Hyprland
 ### Core Tenets
 1. **Isolated Development**: All crazydots code lives inside `/home/aion/crazydots`. Never overwrite or disable the user's running desktop environment or existing configs (e.g., Caelestia in `~/.config/hypr`).
 2. **Pure QML & JavaScript**: Do not introduce custom C++ plugins or binary build dependencies. Build strictly on Quickshell 0.3.2 native modules (`Quickshell`, `Quickshell.Hyprland`, `Quickshell.Io`, `Quickshell.Services.*`, `Quickshell.Wayland`, `Quickshell.Widgets`).
-3. **Strict Milestones**: Implement one milestone at a time (M0 through M9). Verify each milestone thoroughly, obtain user confirmation, and create a verified local git commit.
+3. **Strict Milestones**: Implement one milestone at a time following the canonical sequence:
+   - **M0**: Repository Foundation & Specification
+   - **M1**: Design Tokens & Theme Engine
+   - **M2**: Configuration & Persistence Service
+   - **M3**: Quickshell Entry Point & Shell Base
+   - **M4**: Desktop Bar
+   - **M5**: Application Launcher
+   - **M6**: Wallpaper Manager & Dynamic Color Engine
+   - **M7**: Corner Dashboard & Quick Settings
+   - **M8**: Hyprland & Ghostty Integration
+   - **M9**: Verification, Documentation & Polish
+   Verify each milestone thoroughly, obtain user confirmation, and create a verified local git commit.
 4. **Code Quality and Documentation**: Document every component, property, signal, and service. Explain responsibilities, inputs, outputs, side effects, and testing procedures.
 
 ---

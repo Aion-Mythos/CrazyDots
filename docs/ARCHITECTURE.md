@@ -86,3 +86,19 @@ graph TD
 ## 4. Multi-Monitor Handling
 
 Windows are instantiated dynamically using Quickshell's `Variants` component tied to `Quickshell.screens`. Each monitor receives its own scoped bar and panel instances without hardcoding display names or counts.
+
+---
+
+## 5. Canonical Milestone Roadmap
+
+The implementation is structured into 10 discrete, verifiable milestones:
+- **M0**: Repository Foundation & Specification
+- **M1**: Design Tokens & Theme Engine
+- **M2**: Configuration & Persistence Service
+- **M3**: Quickshell Entry Point & Shell Base
+- **M4**: Desktop Bar
+- **M5**: Application Launcher
+- **M6**: Wallpaper Manager & Dynamic Color Engine
+- **M7**: Corner Dashboard & Quick Settings
+- **M8**: Hyprland & Ghostty Integration
+- **M9**: Verification, Documentation & Polish

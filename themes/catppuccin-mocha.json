@@ -1,0 +1,19 @@
+{
+  "name": "catppuccin-mocha",
+  "displayName": "Catppuccin Mocha",
+  "background": "#1e1e2e",
+  "surface": "#181825",
+  "surfaceElevated": "#313244",
+  "foreground": "#cdd6f4",
+  "mutedForeground": "#a6adc8",
+  "accent": "#89b4fa",
+  "accentSecondary": "#f5c2e7",
+  "border": "#45475a",
+  "borderFocus": "#89b4fa",
+  "selection": "#585b70",
+  "selectionForeground": "#ffffff",
+  "success": "#a6e3a1",
+  "warning": "#f9e2af",
+  "error": "#f38ba8",
+  "shadow": "#11111b"
+}

@@ -122,13 +122,14 @@ All visual components bind strictly to semantic color tokens:
 
 ## 4. Milestone Roadmap
 
-- **M0**: Repository Foundation and Specification (Current)
-- **M1**: Design Tokens and Theme Engine
-- **M2**: Configuration and Persistence Service
-- **M3**: Quickshell Entry Point and Shell Base
+The project follows a strict 10-milestone sequence (M0–M9):
+- **M0**: Repository Foundation & Specification
+- **M1**: Design Tokens & Theme Engine
+- **M2**: Configuration & Persistence Service
+- **M3**: Quickshell Entry Point & Shell Base
 - **M4**: Desktop Bar
 - **M5**: Application Launcher
-- **M6**: Wallpaper Manager and Dynamic Color Engine
-- **M7**: Corner Dashboard and Quick Settings
-- **M8**: Hyprland and Ghostty Integration
-- **M9**: Verification, Documentation, and Polish
+- **M6**: Wallpaper Manager & Dynamic Color Engine
+- **M7**: Corner Dashboard & Quick Settings
+- **M8**: Hyprland & Ghostty Integration
+- **M9**: Verification, Documentation & Polish

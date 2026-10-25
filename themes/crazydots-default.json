@@ -1,0 +1,19 @@
+{
+  "name": "crazydots-default",
+  "displayName": "crazydots Signature (Obsidian & Electric Cyan)",
+  "background": "#0d0e15",
+  "surface": "#141724",
+  "surfaceElevated": "#1c2033",
+  "foreground": "#e6eaf8",
+  "mutedForeground": "#8b94b2",
+  "accent": "#2ee6ca",
+  "accentSecondary": "#ff6b8b",
+  "border": "#282e47",
+  "borderFocus": "#2ee6ca",
+  "selection": "#273152",
+  "selectionForeground": "#ffffff",
+  "success": "#34d399",
+  "warning": "#fbbf24",
+  "error": "#f87171",
+  "shadow": "#000000"
+}

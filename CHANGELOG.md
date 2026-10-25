@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### [0.1.0] - 2026-10-25 - Milestone M0: Foundation and Specification
+### [0.2.0] - 2026-10-25 - Milestone M1: Design Tokens & Theme Engine
+
+#### Added
+- Centralized design tokens in `shell/Tokens.qml`:
+  - Standard spacing hierarchy (`spaceXxs` through `spaceXxl`).
+  - Corner radii (`radiusXs` through `radiusFull`).
+  - Typography scale with monospace (`JetBrainsMono Nerd Font`) and sans-serif font families.
+  - Deterministic animation durations and expressive cubic Bezier curves (`springCurve`, `exitCurve`, `standardCurve`).
+- Central semantic theme singleton in `shell/Theme.qml`:
+  - Reactive semantic color properties (`background`, `surface`, `surfaceElevated`, `foreground`, `mutedForeground`, `accent`, `accentSecondary`, `border`, `selection`, `success`, `warning`, `error`, `shadow`).
+  - Color math helpers: `alpha()`, `lighten()`, `darken()`, and `mix()`.
+  - Built-in theme dictionary with instant in-memory switching.
+  - Matugen JSON palette adapter mapping Material 3 scheme keys to crazydots tokens.
+  - Native `ColorQuantizer` fallback algorithm synthesizing dark, high-contrast palettes from wallpaper colors without external tools.
+- Curated 8 static theme files under `themes/`:
+  - `themes/crazydots-default.json`: Signature obsidian and electric cyan palette.
+  - `themes/catppuccin-mocha.json`
+  - `themes/tokyo-night.json`
+  - `themes/nord.json`
+  - `themes/gruvbox-dark.json`
+  - `themes/dracula.json`
+  - `themes/rose-pine.json`
+  - `themes/everforest.json`
+- Built headless service `shell/services/ThemeEngine.qml` watching `palette.json` and managing wallpaper extraction.
+- Created test harness `shell/TestThemeEngine.qml` and test runner `tests/run_tests.sh` with 29 passing automated assertions.
+- Unified canonical milestone numbering (M0–M9) across `SPEC.md`, `README.md`, `AGENTS.md`, `CHANGELOG.md`, and `docs/ARCHITECTURE.md`.
+
+### [0.1.0] - 2026-10-25 - Milestone M0: Repository Foundation & Specification
 
 #### Added
 - Initialized local Git repository on `main` branch.

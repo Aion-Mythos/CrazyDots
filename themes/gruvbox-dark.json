@@ -1,0 +1,19 @@
+{
+  "name": "gruvbox-dark",
+  "displayName": "Gruvbox Dark",
+  "background": "#282828",
+  "surface": "#1d2021",
+  "surfaceElevated": "#3c3836",
+  "foreground": "#ebdbb2",
+  "mutedForeground": "#a89984",
+  "accent": "#fe8019",
+  "accentSecondary": "#fabd2f",
+  "border": "#504945",
+  "borderFocus": "#fe8019",
+  "selection": "#665c54",
+  "selectionForeground": "#fbf1c7",
+  "success": "#b8bb26",
+  "warning": "#fabd2f",
+  "error": "#fb4934",
+  "shadow": "#141617"
+}

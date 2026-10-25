@@ -1,0 +1,19 @@
+{
+  "name": "everforest",
+  "displayName": "Everforest Dark",
+  "background": "#2b3339",
+  "surface": "#232a2e",
+  "surfaceElevated": "#323c41",
+  "foreground": "#d3c6aa",
+  "mutedForeground": "#9da9a0",
+  "accent": "#a7c080",
+  "accentSecondary": "#7fbbb3",
+  "border": "#475258",
+  "borderFocus": "#a7c080",
+  "selection": "#3a454a",
+  "selectionForeground": "#d3c6aa",
+  "success": "#a7c080",
+  "warning": "#dbbc7f",
+  "error": "#e67e80",
+  "shadow": "#1a1e21"
+}

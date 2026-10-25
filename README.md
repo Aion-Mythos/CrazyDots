@@ -50,11 +50,27 @@ crazydots/
 │   ├── TESTING.md             # Testing and verification strategy
 │   ├── TROUBLESHOOTING.md     # Diagnostic procedures and common fixes
 │   └── SECURITY.md            # Security policy and sub-process execution
-├── shell/                     # Quickshell QML shell source code (Milestones M1-M7)
-├── themes/                    # Static color schemes and Matugen templates (Milestone M1)
+├── shell/                     # Quickshell QML shell source code (M1-M7)
+├── themes/                    # Static color schemes and Matugen templates (M1, M6)
 ├── wallpapers/                # Default wallpaper collection
-└── config/                    # Hyprland and Ghostty integration snippets (Milestone M8)
+└── config/                    # Hyprland and Ghostty integration snippets (M8)
 ```
+
+---
+
+## Canonical Milestone Roadmap
+
+The crazydots engineering lifecycle executes in 10 sequential milestones:
+- **M0**: Repository Foundation & Specification
+- **M1**: Design Tokens & Theme Engine
+- **M2**: Configuration & Persistence Service
+- **M3**: Quickshell Entry Point & Shell Base
+- **M4**: Desktop Bar
+- **M5**: Application Launcher
+- **M6**: Wallpaper Manager & Dynamic Color Engine
+- **M7**: Corner Dashboard & Quick Settings
+- **M8**: Hyprland & Ghostty Integration
+- **M9**: Verification, Documentation & Polish
 
 ---
 
