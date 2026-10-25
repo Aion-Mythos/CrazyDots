@@ -28,8 +28,11 @@ PanelWindow {
     // =========================================================================
     required property var screen
     property bool launcherOpen: false
+    property bool wallpaperManagerOpen: false
 
     signal launcherCloseRequested()
+    signal wallpaperManagerCloseRequested()
+    signal dynamicColorsRequested(string path)
 
     // Multi-monitor active screen coordination
     readonly property bool isCurrentMonitor: {
@@ -39,6 +42,8 @@ PanelWindow {
     }
 
     readonly property bool isLauncherActive: canvas.launcherOpen && canvas.isCurrentMonitor
+    readonly property bool isWallpaperManagerActive: canvas.wallpaperManagerOpen && canvas.isCurrentMonitor
+    readonly property bool isModalActive: isLauncherActive || isWallpaperManagerActive
 
     // =========================================================================
     // WINDOW GEOMETRY & WAYLAND LAYER PROPERTIES
@@ -57,8 +62,8 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    // Dynamic keyboard focus: Exclusive while launcher is active, None when idle
-    WlrLayershell.keyboardFocus: canvas.isLauncherActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    // Dynamic keyboard focus: Exclusive while launcher/wallpaper modal is active, None when idle
+    WlrLayershell.keyboardFocus: canvas.isModalActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     // Transparent backdrop allows full desktop visibility
     color: "transparent"
@@ -70,22 +75,22 @@ PanelWindow {
     // =========================================================================
     Region { id: emptyMask }
     Region {
-        id: launcherMask
-        Region { item: launcherScrim }
+        id: modalMask
+        Region { item: modalScrim }
     }
 
-    mask: canvas.isLauncherActive ? launcherMask : emptyMask
+    mask: canvas.isModalActive ? modalMask : emptyMask
 
     // =========================================================================
     // 1. MODAL SCRIM BACKDROP
-    // Dims the screen and catches clicks outside the launcher dialog to close it.
+    // Dims the screen and catches clicks outside active modals to close them.
     // =========================================================================
     Rectangle {
-        id: launcherScrim
+        id: modalScrim
         anchors.fill: parent
         color: Theme.alpha("#000000", 0.45)
-        visible: canvas.isLauncherActive
-        opacity: canvas.isLauncherActive ? 1.0 : 0.0
+        visible: canvas.isModalActive
+        opacity: canvas.isModalActive ? 1.0 : 0.0
 
         Behavior on opacity {
             NumberAnimation {
@@ -98,18 +103,21 @@ PanelWindow {
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.ArrowCursor
-            onClicked: canvas.launcherCloseRequested()
+            onClicked: {
+                if (canvas.isLauncherActive) canvas.launcherCloseRequested();
+                if (canvas.isWallpaperManagerActive) canvas.wallpaperManagerCloseRequested();
+            }
         }
     }
 
     // =========================================================================
-    // 2. SHELL SLOTS & LAUNCHER MODAL
+    // 2. SHELL SLOTS: LAUNCHER & WALLPAPER MANAGER MODALS
     // =========================================================================
     Item {
         id: centerSlot
         anchors.centerIn: parent
-        width: launcherWidget.implicitWidth
-        height: launcherWidget.implicitHeight
+        width: canvas.isWallpaperManagerActive ? wallpaperManagerWidget.implicitWidth : launcherWidget.implicitWidth
+        height: canvas.isWallpaperManagerActive ? wallpaperManagerWidget.implicitHeight : launcherWidget.implicitHeight
 
         Launcher {
             id: launcherWidget
@@ -142,6 +150,36 @@ PanelWindow {
                     resetSearch();
                     focusSearch();
                 }
+            }
+        }
+
+        WallpaperManager {
+            id: wallpaperManagerWidget
+            anchors.centerIn: parent
+            active: canvas.isWallpaperManagerActive
+            visible: canvas.isWallpaperManagerActive
+            opacity: canvas.isWallpaperManagerActive ? 1.0 : 0.0
+            scale: canvas.isWallpaperManagerActive ? 1.0 : 0.94
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                    easing.type: Tokens.easingStandard.type
+                    easing.bezierCurve: Tokens.easingStandard.bezierCurve
+                }
+            }
+
+            Behavior on scale {
+                NumberAnimation {
+                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                    easing.type: Tokens.easingSpring.type
+                    easing.bezierCurve: Tokens.easingSpring.bezierCurve
+                }
+            }
+
+            onCloseRequested: canvas.wallpaperManagerCloseRequested()
+            onDynamicColorsExtracted: function(path) {
+                canvas.dynamicColorsRequested(path);
             }
         }
     }

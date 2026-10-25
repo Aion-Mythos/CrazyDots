@@ -13,6 +13,8 @@ import ".."
  *   written by Matugen or external scripts, and pushes changes into Theme.
  * - Provides native in-shell color quantization via Quickshell's ColorQuantizer
  *   as a zero-dependency fallback when Matugen is unavailable.
+ * - Detects presence of Matugen binary without executing arbitrary strings.
+ * - Validates generated palette data and preserves last known-good theme on failures.
  * - Handles missing files and parse errors safely without crashing the shell.
  */
 Item {
@@ -25,10 +27,28 @@ Item {
     property bool autoWatch: true
     property string currentWallpaperPath: ""
     property bool isExtracting: false
+    property bool hasMatugen: false
+    property string lastKnownGoodPalette: ""
 
     // Signals
     signal paletteLoaded(string source)
     signal extractionCompleted(int colorCount)
+    signal generationFailed(string reason)
+
+    // =========================================================================
+    // MATUGEN AVAILABILITY PROBE
+    // =========================================================================
+    Process {
+        id: matugenProbe
+        command: ["which", "matugen"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = (text || "").trim();
+                root.hasMatugen = out.length > 0 && out.indexOf("matugen") !== -1;
+            }
+        }
+    }
 
     // =========================================================================
     // FILE WATCHER FOR EXTERNAL / MATUGEN PALETTES
@@ -36,6 +56,7 @@ Item {
     FileView {
         id: paletteView
         path: root.autoWatch ? root.palettePath : ""
+        atomicWrites: true
         printErrors: false
 
         onFileChanged: {
@@ -55,8 +76,11 @@ Item {
                 const success = Theme.applyFromQuantizer(quantizer.colors);
                 root.isExtracting = false;
                 if (success) {
+                    root.lastKnownGoodPalette = "quantizer:" + quantizer.colors.join(",");
                     root.extractionCompleted(quantizer.colors.length);
                     root.paletteLoaded("quantizer");
+                } else {
+                    root.generationFailed("ColorQuantizer synthesis failed");
                 }
             }
         }
@@ -68,6 +92,7 @@ Item {
 
     /**
      * reloadFromFile(): Reads paletteView.text() and applies it to Theme.
+     * Preserves last known good palette if file contains malformed data.
      */
     function reloadFromFile(): bool {
         const text = paletteView.text();
@@ -75,9 +100,21 @@ Item {
             return false;
         }
 
+        // Validate JSON structure before loading
+        try {
+            JSON.parse(text);
+        } catch (e) {
+            console.warn("crazydots: Rejecting malformed palette JSON, preserving last known-good theme.");
+            root.generationFailed("Malformed palette JSON");
+            return false;
+        }
+
         const success = Theme.loadPaletteJson(text);
         if (success) {
+            root.lastKnownGoodPalette = text;
             root.paletteLoaded("file");
+        } else {
+            root.generationFailed("Failed to map palette tokens");
         }
         return success;
     }
@@ -85,9 +122,13 @@ Item {
     /**
      * extractFromWallpaper(path):
      * Runs Quickshell's native ColorQuantizer against an image file URL or path.
+     * Fallback is active when Matugen is not installed.
      */
-    function extractFromWallpaper(path: string) {
-        if (!path || path.length === 0) return;
+    function extractFromWallpaper(path: string): bool {
+        if (!path || path.trim().length === 0) {
+            root.generationFailed("Empty wallpaper path");
+            return false;
+        }
 
         root.isExtracting = true;
         root.currentWallpaperPath = path;
@@ -95,6 +136,7 @@ Item {
         // Ensure URL scheme is present
         const urlStr = path.startsWith("file://") ? path : ("file://" + path);
         quantizer.source = urlStr;
+        return true;
     }
 
     /**

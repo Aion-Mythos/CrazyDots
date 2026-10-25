@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2e3440"/>
+      <stop offset="60%" stop-color="#3b4252"/>
+      <stop offset="100%" stop-color="#434c5e"/>
+    </linearGradient>
+    <linearGradient id="frostGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#88c0d0" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#81a1c1" stop-opacity="0.6"/>
+    </linearGradient>
+    <linearGradient id="frostGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8fbcbb" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#5e81ac" stop-opacity="0.5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#skyGrad)"/>
+  <polygon points="150,1080 620,480 1050,1080" fill="url(#frostGrad2)"/>
+  <polygon points="620,480 1050,1080 840,1080" fill="#4c566a" fill-opacity="0.5"/>
+  <polygon points="750,1080 1280,360 1780,1080" fill="url(#frostGrad1)"/>
+  <polygon points="1280,360 1780,1080 1520,1080" fill="#3b4252" fill-opacity="0.6"/>
+  <polygon points="1150,1080 1480,590 1920,1080" fill="#81a1c1" fill-opacity="0.4"/>
+</svg>

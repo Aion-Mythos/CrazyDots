@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.7.0] - 2026-10-25 - Milestone M6: Wallpaper Manager & Dynamic Color Engine
+
+#### Added
+- Dedicated desktop wallpaper background surface in `shell/panels/WallpaperSurface.qml`:
+  - Operates per-monitor on `WlrLayer.Background` behind all tiled and floating application windows.
+  - Configured with `ExclusionMode.Ignore` and `WlrKeyboardFocus.None` to avoid window management disruptions.
+  - Full-screen input pass-through via empty input mask `mask: Region {}`.
+  - Configurable fill modes: `"fill"` (`Image.PreserveAspectCrop`), `"fit"` (`Image.PreserveAspectFit`), `"center"` (`Image.Pad`), and `"tile"` (`Image.Tile`).
+  - Asynchronous background decoding and cache management to prevent UI stutter.
+  - Graceful fallback to `Theme.background` on missing, deleted, or unreadable wallpaper files.
+  - Opacity transition animations between wallpaper loads and fallback backgrounds.
+- Visual Wallpaper Manager modal in `shell/panels/WallpaperManager.qml`:
+  - Asynchronous multi-directory scanning via `Quickshell.Io.Process` and `StdioCollector` without UI blocking.
+  - Thumbnail preview grid with image loading, active status badge, and error fallback states.
+  - Real-time filename search filter.
+  - Interactive mode selector pills (`FILL`, `FIT`, `CENTER`, `TILE`).
+  - "Apply Wallpaper" and "Dynamic Theme" actions with atomic persistence via `Config.qml`.
+- Integrated Dynamic Color Engine in `shell/services/ThemeEngine.qml`:
+  - Matugen binary availability probe via `Process` without executing arbitrary strings.
+  - In-shell zero-dependency color extraction using `Quickshell.ColorQuantizer` fallback when Matugen is not installed.
+  - Complete semantic palette synthesis (background, surface, accent, muted, borders, states) from extracted dominant colors.
+  - Safe validation of JSON palette structures with preservation of `lastKnownGoodPalette` on corrupt inputs.
+  - Emits `paletteLoaded`, `extractionCompleted`, and `generationFailed` lifecycle signals.
+- Bundled signature SVG wallpapers in `assets/wallpapers/`:
+  - `crazydots-dark-mesh.svg`: Geometric grid on deep obsidian with electric cyan accents.
+  - `crazydots-nord-glacier.svg`: Arctic frost polygonal mountains and glacier horizons.
+  - `crazydots-sunset-matrix.svg`: Synthwave perspective grid and neon magenta sun.
+- Extended IPC interface in `shell/Main.qml`:
+  - `getWallpaper()`, `setWallpaper(path, mode)`, `getWallpaperMode()`.
+  - `getWallpaperDirectory()`, `setWallpaperDirectory(dir)`.
+  - `openWallpaperManager()`, `closeWallpaperManager()`, `toggleWallpaperManager()`, `isWallpaperManagerOpen()`.
+  - `extractDynamicColors(path)`.
+- Automated test suite `shell/TestWallpaper.qml` (39 passing assertions) covering configuration, surface layer geometry, manager discovery/filtering, modal coordination, and dynamic extraction resilience.
+- Updated `tests/run_tests.sh` to run static analysis (`qmllint`) and test suites M1 through M6, totaling 179 passing assertions with 0 errors.
+
 ### [0.6.0] - 2026-10-25 - Milestone M5: Application Launcher
 
 #### Added

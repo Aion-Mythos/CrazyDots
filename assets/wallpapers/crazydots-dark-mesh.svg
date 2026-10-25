@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <radialGradient id="cyanGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#2ee6ca" stop-opacity="0.35"/>
+      <stop offset="60%" stop-color="#0d0e15" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#07080c" stop-opacity="1"/>
+    </radialGradient>
+    <pattern id="dotGrid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="2" fill="#2ee6ca" fill-opacity="0.25"/>
+    </pattern>
+    <linearGradient id="cyberLine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2ee6ca" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#60a5fa" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#0d0e15" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="#0d0e15"/>
+  <rect width="1920" height="1080" fill="url(#cyanGlow)"/>
+  <rect width="1920" height="1080" fill="url(#dotGrid)"/>
+  <circle cx="960" cy="540" r="320" fill="none" stroke="url(#cyberLine)" stroke-width="2" stroke-dasharray="8 12"/>
+  <circle cx="960" cy="540" r="220" fill="none" stroke="#2ee6ca" stroke-opacity="0.4" stroke-width="1.5"/>
+  <circle cx="960" cy="540" r="120" fill="#2ee6ca" fill-opacity="0.08"/>
+</svg>

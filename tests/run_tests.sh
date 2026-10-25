@@ -18,6 +18,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/components/ButtonBase.qml" \
     "$SCRIPT_DIR/shell/panels/Bar.qml" \
     "$SCRIPT_DIR/shell/panels/Launcher.qml" \
+    "$SCRIPT_DIR/shell/panels/WallpaperSurface.qml" \
+    "$SCRIPT_DIR/shell/panels/WallpaperManager.qml" \
     "$SCRIPT_DIR/shell/panels/bar/BarPill.qml" \
     "$SCRIPT_DIR/shell/panels/bar/Workspaces.qml" \
     "$SCRIPT_DIR/shell/panels/bar/ActiveWindow.qml" \
@@ -29,7 +31,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/TestConfig.qml" \
     "$SCRIPT_DIR/shell/TestBaseComponents.qml" \
     "$SCRIPT_DIR/shell/TestBar.qml" \
-    "$SCRIPT_DIR/shell/TestLauncher.qml"
+    "$SCRIPT_DIR/shell/TestLauncher.qml" \
+    "$SCRIPT_DIR/shell/TestWallpaper.qml"
 
 echo "==> qmllint passed with 0 errors!"
 
@@ -48,7 +51,10 @@ quickshell -p "$SCRIPT_DIR/shell/TestBar.qml"
 echo "==> 6. Executing M5 Application Launcher test suite in Quickshell..."
 quickshell -p "$SCRIPT_DIR/shell/TestLauncher.qml"
 
-echo "==> 7. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
+echo "==> 7. Executing M6 Wallpaper Manager & Dynamic Color Engine test suite in Quickshell..."
+quickshell -p "$SCRIPT_DIR/shell/TestWallpaper.qml"
+
+echo "==> 8. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
 # Start shell.qml in background with isolated config path
 quickshell -p "$SCRIPT_DIR/shell" &
 SHELL_PID=$!
@@ -66,6 +72,16 @@ IPC_LAUNCHER_CHECK=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isLaun
 IPC_LAUNCHER_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closeLauncher)
 IPC_LAUNCHER_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isLauncherOpen)
 
+IPC_WP_DIR=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getWallpaperDirectory)
+IPC_WP_MODE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getWallpaperMode)
+IPC_WP_MGR_INIT=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isWallpaperManagerOpen)
+IPC_WP_MGR_OPEN=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots openWallpaperManager)
+IPC_WP_MGR_CHECK=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isWallpaperManagerOpen)
+IPC_WP_MGR_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closeWallpaperManager)
+IPC_WP_MGR_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isWallpaperManagerOpen)
+IPC_WP_SET=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots setWallpaper "/home/aion/crazydots/assets/wallpapers/crazydots-dark-mesh.svg" "fit")
+IPC_WP_GET=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getWallpaper)
+
 # Terminate test instance cleanly
 kill "$SHELL_PID" 2>/dev/null || true
 wait "$SHELL_PID" 2>/dev/null || true
@@ -80,6 +96,15 @@ echo "    IPC openLauncher response: $IPC_LAUNCHER_OPEN"
 echo "    IPC isLauncherOpen after open: $IPC_LAUNCHER_CHECK"
 echo "    IPC closeLauncher response: $IPC_LAUNCHER_CLOSE"
 echo "    IPC isLauncherOpen after close: $IPC_LAUNCHER_FINAL"
+echo "    IPC getWallpaperDirectory: $IPC_WP_DIR"
+echo "    IPC getWallpaperMode: $IPC_WP_MODE"
+echo "    IPC isWallpaperManagerOpen initial: $IPC_WP_MGR_INIT"
+echo "    IPC openWallpaperManager response: $IPC_WP_MGR_OPEN"
+echo "    IPC isWallpaperManagerOpen after open: $IPC_WP_MGR_CHECK"
+echo "    IPC closeWallpaperManager response: $IPC_WP_MGR_CLOSE"
+echo "    IPC isWallpaperManagerOpen after close: $IPC_WP_MGR_FINAL"
+echo "    IPC setWallpaper response: $IPC_WP_SET"
+echo "    IPC getWallpaper response: $IPC_WP_GET"
 
 if [[ "$IPC_PING" != *"pong"* ]]; then
     echo "ERROR: IPC ping failed!" >&2
@@ -91,7 +116,17 @@ if [[ "$IPC_LAUNCHER_CHECK" != *"true"* || "$IPC_LAUNCHER_FINAL" != *"false"* ]]
     exit 1
 fi
 
-echo "==> 8. Verifying live environment integrity..."
+if [[ "$IPC_WP_MGR_CHECK" != *"true"* || "$IPC_WP_MGR_FINAL" != *"false"* ]]; then
+    echo "ERROR: IPC wallpaper manager toggling failed!" >&2
+    exit 1
+fi
+
+if [[ "$IPC_WP_GET" != *"crazydots-dark-mesh.svg"* ]]; then
+    echo "ERROR: IPC setWallpaper / getWallpaper failed!" >&2
+    exit 1
+fi
+
+echo "==> 9. Verifying live environment integrity..."
 # Check that ~/.config/hypr and Caelestia are untouched
 if [[ ! -f "$HOME/.config/hypr/hyprland.lua" ]]; then
     echo "ERROR: ~/.config/hypr/hyprland.lua missing!" >&2

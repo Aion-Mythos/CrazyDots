@@ -65,6 +65,7 @@ QtObject {
     // =========================================================================
     property string wallpaperCurrent: ""           // Path to active wallpaper image
     property string wallpaperMode: "fill"          // "fill", "fit", "center", "tile"
+    property string wallpaperDirectory: Quickshell.env("HOME") + "/Pictures/Wallpapers" // Wallpaper folder
 
     // =========================================================================
     // 4. ANIMATION PREFERENCES
@@ -145,7 +146,8 @@ QtObject {
         },
         wallpaper: {
             current: "",
-            mode: "fill"
+            mode: "fill",
+            directory: Quickshell.env("HOME") + "/Pictures/Wallpapers"
         },
         animations: {
             enabled: true,
@@ -225,6 +227,9 @@ QtObject {
             if (["fill", "fit", "center", "tile"].indexOf(raw.wallpaper.mode) !== -1) {
                 res.wallpaper.mode = raw.wallpaper.mode;
             }
+            if (typeof raw.wallpaper.directory === "string" && raw.wallpaper.directory.trim().length > 0) {
+                res.wallpaper.directory = raw.wallpaper.directory.trim();
+            }
         }
 
         // --- Animations validation ---
@@ -287,6 +292,7 @@ QtObject {
 
         root.wallpaperCurrent = clean.wallpaper.current;
         root.wallpaperMode = clean.wallpaper.mode;
+        root.wallpaperDirectory = clean.wallpaper.directory || (Quickshell.env("HOME") + "/Pictures/Wallpapers");
 
         root.animationsEnabled = clean.animations.enabled;
         root.animationSpeed = clean.animations.speed;
@@ -332,7 +338,8 @@ QtObject {
             },
             wallpaper: {
                 current: root.wallpaperCurrent,
-                mode: root.wallpaperMode
+                mode: root.wallpaperMode,
+                directory: root.wallpaperDirectory
             },
             animations: {
                 enabled: root.animationsEnabled,
@@ -488,6 +495,13 @@ QtObject {
             root.wallpaperMode = mode;
         }
         root.saveDebounced(350);
+    }
+
+    function setWallpaperDirectory(dir: string): bool {
+        if (!dir || dir.trim().length === 0) return false;
+        root.wallpaperDirectory = dir.trim();
+        root.saveDebounced(350);
+        return true;
     }
 
     // =========================================================================

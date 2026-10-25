@@ -19,9 +19,10 @@ Item {
     id: root
 
     // =========================================================================
-    // LAUNCHER STATE MANAGEMENT
+    // LAUNCHER & MODAL STATE MANAGEMENT
     // =========================================================================
     property bool launcherOpen: false
+    property bool wallpaperManagerOpen: false
 
     function openLauncher(): bool {
         root.launcherOpen = true;
@@ -41,6 +42,26 @@ Item {
     function isLauncherOpen(): bool {
         return root.launcherOpen;
     }
+
+    function openWallpaperManager(): bool {
+        root.wallpaperManagerOpen = true;
+        return true;
+    }
+
+    function closeWallpaperManager(): bool {
+        root.wallpaperManagerOpen = false;
+        return true;
+    }
+
+    function toggleWallpaperManager(): bool {
+        root.wallpaperManagerOpen = !root.wallpaperManagerOpen;
+        return root.wallpaperManagerOpen;
+    }
+
+    function isWallpaperManagerOpen(): bool {
+        return root.wallpaperManagerOpen;
+    }
+
     ThemeEngine {
         id: themeEngine
     }
@@ -123,6 +144,64 @@ Item {
         function isLauncherOpen(): bool {
             return root.isLauncherOpen();
         }
+
+        // Wallpaper & Theme IPC API
+        function getWallpaper(): string {
+            return Config.wallpaperCurrent;
+        }
+
+        function setWallpaper(path: string, mode: string): bool {
+            Config.setWallpaper(path, mode);
+            return true;
+        }
+
+        function getWallpaperMode(): string {
+            return Config.wallpaperMode;
+        }
+
+        function getWallpaperDirectory(): string {
+            return Config.wallpaperDirectory;
+        }
+
+        function setWallpaperDirectory(dir: string): bool {
+            return Config.setWallpaperDirectory(dir);
+        }
+
+        function openWallpaperManager(): bool {
+            return root.openWallpaperManager();
+        }
+
+        function closeWallpaperManager(): bool {
+            return root.closeWallpaperManager();
+        }
+
+        function toggleWallpaperManager(): bool {
+            return root.toggleWallpaperManager();
+        }
+
+        function isWallpaperManagerOpen(): bool {
+            return root.isWallpaperManagerOpen();
+        }
+
+        function extractDynamicColors(path: string): bool {
+            return themeEngine.extractFromWallpaper(path);
+        }
+    }
+
+    // =========================================================================
+    // MULTI-MONITOR WALLPAPER BACKGROUND INSTANTIATION
+    // Mounts an independent wallpaper background surface on each connected display.
+    // =========================================================================
+    Variants {
+        id: wallpaperVariants
+        model: Quickshell.screens
+
+        delegate: Component {
+            WallpaperSurface {
+                required property var modelData
+                screen: modelData
+            }
+        }
     }
 
     // =========================================================================
@@ -138,7 +217,12 @@ Item {
                 required property var modelData
                 screen: modelData
                 launcherOpen: root.launcherOpen
+                wallpaperManagerOpen: root.wallpaperManagerOpen
                 onLauncherCloseRequested: root.closeLauncher()
+                onWallpaperManagerCloseRequested: root.closeWallpaperManager()
+                onDynamicColorsRequested: function(path) {
+                    themeEngine.extractFromWallpaper(path);
+                }
             }
         }
     }
