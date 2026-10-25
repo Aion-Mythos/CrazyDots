@@ -155,6 +155,18 @@ Item {
             testRoot.assert(rejectAmpersand === false,
                 "dispatch() rejects ampersand command-chaining injection");
 
+            const rejectUnapproved = testHyprland.dispatch("exec evil_payload");
+            testRoot.assert(rejectUnapproved === false,
+                "dispatch() rejects unapproved 'exec' dispatcher command via allowlist");
+
+            const rejectPipe = testHyprland.dispatch("workspace 1 | evil");
+            testRoot.assert(rejectPipe === false,
+                "dispatch() rejects pipe character injection");
+
+            const rejectInvalidWs = testHyprland.dispatch("workspace -9");
+            testRoot.assert(rejectInvalidWs === false,
+                "dispatch() rejects malformed workspace arguments");
+
             // =================================================================
             // TEST SUITE 3: GHOSTTY & TERMINAL CONFIGURATION PERSISTENCE
             // =================================================================
@@ -172,6 +184,14 @@ Item {
             testRoot.assert(rejectEmptyCmd === false,
                 "Config.setTerminalCommand('') rejects empty command string");
 
+            const rejectInjectedCmd = Config.setTerminalCommand("ghostty; evil");
+            testRoot.assert(rejectInjectedCmd === false,
+                "Config.setTerminalCommand() rejects injection metacharacters");
+
+            const rejectSpacesCmd = Config.setTerminalCommand("sh -c evil");
+            testRoot.assert(rejectSpacesCmd === false,
+                "Config.setTerminalCommand() rejects multi-token command strings");
+
             const setAppIdRes = Config.setTerminalAppId("org.alacritty");
             testRoot.assert(setAppIdRes === true && Config.terminalAppId === "org.alacritty",
                 "Config.setTerminalAppId('org.alacritty') updates terminalAppId property");
@@ -179,6 +199,10 @@ Item {
             const rejectEmptyAppId = Config.setTerminalAppId("");
             testRoot.assert(rejectEmptyAppId === false,
                 "Config.setTerminalAppId('') rejects empty appId string");
+
+            const rejectInjectedAppId = Config.setTerminalAppId("org.app; evil");
+            testRoot.assert(rejectInjectedAppId === false,
+                "Config.setTerminalAppId() rejects invalid appId characters");
 
             // Restore defaults
             Config.setTerminalCommand("ghostty");

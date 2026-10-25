@@ -6,6 +6,7 @@ quickshell-git          # Desktop shell host with Wayland layer-shell protocol s
 hyprland                # Dynamic tiling Wayland compositor
 qt6-declarative         # Qt Quick and QML runtime engine
 qt6-base                # Qt 6 core base libraries
+qt6-svg                 # Qt 6 SVG rendering support (vector wallpapers and icons)
 pipewire                # Audio server and media routing
 wireplumber             # PipeWire session manager
 

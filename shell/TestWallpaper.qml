@@ -95,8 +95,9 @@ Item {
                 "Config.wallpaperDirectory is initialized to a valid directory path");
 
             const originalDir = Config.wallpaperDirectory;
-            const dirUpdated = Config.setWallpaperDirectory("/home/aion/crazydots/assets/wallpapers");
-            testRoot.assert(dirUpdated === true && Config.wallpaperDirectory === "/home/aion/crazydots/assets/wallpapers",
+            const assetsDir = Quickshell.env("HOME") + "/crazydots/assets/wallpapers";
+            const dirUpdated = Config.setWallpaperDirectory(assetsDir);
+            testRoot.assert(dirUpdated === true && Config.wallpaperDirectory === assetsDir,
                 "Config.setWallpaperDirectory() successfully updates wallpaper directory path");
 
             const rejectEmptyDir = Config.setWallpaperDirectory("");
@@ -107,7 +108,7 @@ Item {
             Config.setWallpaperDirectory(originalDir);
 
             // Test setWallpaper and fill mode validation
-            const testPath = "/home/aion/crazydots/assets/wallpapers/crazydots-dark-mesh.svg";
+            const testPath = assetsDir + "/crazydots-dark-mesh.svg";
             Config.setWallpaper(testPath, "fill");
             testRoot.assert(Config.wallpaperCurrent === testPath,
                 "Config.setWallpaper() updates wallpaperCurrent path");

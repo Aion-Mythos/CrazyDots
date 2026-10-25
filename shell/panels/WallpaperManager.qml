@@ -45,12 +45,24 @@ Item {
         if (root.isScanning) return;
         root.isScanning = true;
 
-        const scanPaths = [
+        const rawPaths = [
             Config.wallpaperDirectory,
+            Quickshell.env("HOME") + "/Pictures/Wallpapers",
             Quickshell.env("HOME") + "/Pictures",
             Quickshell.env("HOME") + "/.config/crazydots/wallpapers",
-            "/home/aion/crazydots/assets/wallpapers"
+            Quickshell.env("CRAZYDOTS_ASSETS_DIR"),
+            Quickshell.env("HOME") + "/.local/share/crazydots/assets/wallpapers",
+            Quickshell.env("HOME") + "/crazydots/assets/wallpapers",
+            "/usr/share/crazydots/assets/wallpapers"
         ];
+
+        const scanPaths = [];
+        for (let i = 0; i < rawPaths.length; i++) {
+            const p = rawPaths[i];
+            if (p && typeof p === "string" && p.trim().length > 0 && scanPaths.indexOf(p.trim()) === -1) {
+                scanPaths.push(p.trim());
+            }
+        }
 
         scannerProc.command = ["find"].concat(scanPaths).concat([
             "-maxdepth", "2",

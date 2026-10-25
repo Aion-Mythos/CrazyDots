@@ -12,6 +12,7 @@ This document tracks all external dependencies, verification status, and fallbac
 | `hyprland` | Installed (`0.56.2`) | Wayland compositor, window management, global shortcuts | None (Core Requirement) |
 | `qt6-declarative` | Installed (`6.12.0`) | Qt Quick and QML engine | None (Core Requirement) |
 | `qt6-base` | Installed (`6.12.0`) | Qt 6 core libraries | None (Core Requirement) |
+| `qt6-svg` | Installed (`6.12.0`) | Vector graphics and SVG wallpaper rendering | Vector wallpapers fall back to Theme.background |
 | `pipewire` | Installed | Audio server and stream routing | None (Audio widgets hide or display disconnected) |
 | `wireplumber` | Installed | PipeWire session manager | Volume controls unavailable |
 | `ghostty` | Installed (`1.3.1`) | Default terminal emulator | Shell launches `$TERMINAL` or `xterm` |

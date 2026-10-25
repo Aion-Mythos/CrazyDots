@@ -90,7 +90,7 @@ IPC_WP_MGR_OPEN=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots openWallp
 IPC_WP_MGR_CHECK=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isWallpaperManagerOpen)
 IPC_WP_MGR_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closeWallpaperManager)
 IPC_WP_MGR_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isWallpaperManagerOpen)
-IPC_WP_SET=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots setWallpaper "/home/aion/crazydots/assets/wallpapers/crazydots-dark-mesh.svg" "fit")
+IPC_WP_SET=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots setWallpaper "$SCRIPT_DIR/assets/wallpapers/crazydots-dark-mesh.svg" "fit")
 IPC_WP_GET=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getWallpaper)
 
 IPC_DASH_CORNER=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getDashboardCorner)

@@ -10,12 +10,17 @@ This document outlines the development workflow, coding standards, and testing p
 Never test changes by overwriting system configurations or restarting the user's primary desktop session.
 Run crazydots from the project root using its explicit path:
 ```bash
-quickshell -p /home/aion/crazydots/shell
+quickshell -p ~/crazydots/shell
 ```
 
-To run a specific QML file or component test in isolation:
+To run the complete automated test suite across all subsystems:
 ```bash
-quickshell -p /home/aion/crazydots/shell/tests/TestPanel.qml
+./tests/run_tests.sh
+```
+
+To run a specific test harness in isolation:
+```bash
+quickshell -p ~/crazydots/shell/TestDashboard.qml
 ```
 
 ### 1.2 QML Coding Conventions

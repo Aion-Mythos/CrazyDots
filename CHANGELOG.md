@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [1.0.0] - 2026-10-25 - Milestone M9: Verification, Documentation & Polish
+
+#### Added
+- Strict Dispatcher Security Allowlist in `shell/services/HyprlandService.qml`:
+  - Enforces explicit allowlist for compositor operations: `workspace`, `movetoworkspace`, `movetoworkspacesilent`, `focuswindow`, `closewindow`, `killactive`, `fullscreen`, `togglefloating`, and `no_op`.
+  - Rejects dangerous unapproved operations (including `exec`, `spawn`, `exit`, `kill`, `pass`, `submap`).
+  - Validates argument structures per operation (numeric workspace IDs, relative shifts, window addresses).
+  - Rejects command chaining, shell metacharacters, and control codes (`\n`, `\r`, `;`, `&`, `|`, `` ` ``, `$`, `>`, `<`).
+  - Native `HyprlandWorkspace.activate()` prioritized for workspace switching to avoid string parsing and Lua syntax errors.
+  - Truthful error handling via `try ... catch` returning boolean status.
+- Terminal Configuration Validation & Sanitization in `shell/Config.qml`:
+  - Binary command validation (`/^[a-zA-Z0-9_\-\./]+$/`) rejecting whitespace, newlines, and shell metacharacters.
+  - Desktop application ID validation (`/^[a-zA-Z0-9_\-\.]+$/`).
+  - Prevents arbitrary shell execution or multi-token injection through terminal settings.
+- Robust Path and Asset Resolution:
+  - Removed machine-specific hardcoded paths in `shell/panels/WallpaperManager.qml` and `shell/TestWallpaper.qml`.
+  - Configured multi-root asset search supporting environment variables (`CRAZYDOTS_ASSETS_DIR`), user directories, development workspace, and system shares.
+  - Proper URL resolution in `WallpaperSurface.qml` and `ThemeEngine.qml` via `Qt.resolvedUrl()`, handling spaces and special characters cleanly.
+- Dependency Manifest Updates:
+  - Added `qt6-svg` to Tier 1 required core packages in `packages.txt` and `docs/DEPENDENCIES.md`.
+- Comprehensive Automated Test Suite Expansion:
+  - Added 6 security and injection-hardening assertions to `shell/TestHyprlandGhostty.qml`.
+  - Total automated assertions across all 8 suites increased to **268 passing assertions with 0 failures**.
+- Comprehensive Documentation Review & Alignment:
+  - Overhauled `docs/SECURITY.md` covering subprocess execution, dispatcher allowlisting, atomic persistence, and input privacy.
+  - Updated `README.md`, `docs/COMPONENTS.md`, `docs/CONFIGURATION.md`, `docs/DEPENDENCIES.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`, and `docs/TROUBLESHOOTING.md` to reflect actual implementation.
+  - Audited `install.sh` and `uninstall.sh` verifying non-destructive operation and user data preservation.
+
 ### [0.9.0] - 2026-10-25 - Milestone M8: Hyprland & Ghostty Integration
 
 #### Added

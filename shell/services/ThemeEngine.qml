@@ -133,9 +133,8 @@ Item {
         root.isExtracting = true;
         root.currentWallpaperPath = path;
 
-        // Ensure URL scheme is present
-        const urlStr = path.startsWith("file://") ? path : ("file://" + path);
-        quantizer.source = urlStr;
+        // Ensure URL scheme is present and special characters are handled
+        quantizer.source = Qt.resolvedUrl(path);
         return true;
     }
 

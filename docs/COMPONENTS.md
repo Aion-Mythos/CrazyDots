@@ -41,9 +41,7 @@ All components consume values from `Tokens.qml` and `Theme.qml`. Hardcoded pixel
 ### 2.1 Base Primitives (`shell/components/`)
 - **`StyledRect.qml`**: Background rectangle with default theme colors, border radii, and smooth `ColorAnimation` on theme shifts.
 - **`StyledText.qml`**: Typography element with default fonts (JetBrainsMono Nerd Font / Adwaita Sans) and semantic color bindings.
-- **`StyledButton.qml`**: Interactive button with hover, pressed, and focused visual feedback states.
-- **`FilledSlider.qml`**: Smooth custom slider for volume, brightness, or settings sliders.
-- **`Icon.qml`**: Standardized glyph rendering supporting both Nerd Font symbols and system icons via `Quickshell.Widgets.IconImage`.
+- **`ButtonBase.qml`**: Accessible interactive clickable surface with hover, active, and pressed visual states, cursor management, and click handlers.
 
 ### 2.2 Panels (`shell/panels/`)
 - **`Bar.qml`**: Desktop taskbar containing workspaces, clock, tray, battery, and audio controls.

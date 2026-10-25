@@ -9,11 +9,11 @@ This document outlines diagnostic steps and solutions for common issues when run
 ### 1.1 Checking Quickshell Logs
 Run Quickshell in verbose mode to capture Qt Quick scene graph and QML runtime output:
 ```bash
-quickshell -v -p /home/aion/crazydots/shell
+quickshell -v -p ~/crazydots/shell
 ```
 Or for debug-level logs:
 ```bash
-quickshell -vv -p /home/aion/crazydots/shell
+quickshell -vv -p ~/crazydots/shell
 ```
 
 ### 1.2 Inspecting Active Quickshell Instances
@@ -53,6 +53,6 @@ quickshell list --all
 - **Cause**: Preferred terminal (Ghostty) binary not found on `$PATH` or custom terminal desired.
 - **Fix**: Configure `terminal.command` and `terminal.appId` in `~/.config/crazydots/config.json`, or dynamically update via IPC:
   ```bash
-  quickshell ipc -p ~/.config/crazydots/shell call crazydots setTerminalCommand alacritty
-  quickshell ipc -p ~/.config/crazydots/shell call crazydots setTerminalAppId org.alacritty
+  quickshell ipc -p ~/crazydots/shell call crazydots setTerminalCommand alacritty
+  quickshell ipc -p ~/crazydots/shell call crazydots setTerminalAppId org.alacritty
   ```

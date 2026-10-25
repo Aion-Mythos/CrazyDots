@@ -23,9 +23,10 @@
 - **OS**: Arch Linux (or compatible Linux distribution)
 - **Compositor**: Hyprland (>= 0.56.0)
 - **Host**: Quickshell (>= 0.3.2)
-- **Qt**: Qt 6.12+ (`qt6-declarative`, `qt6-base`)
-- **Terminal**: Ghostty
-- **Dynamic Theming**: Matugen (optional, with native fallback)
+- **Qt**: Qt 6.12+ (`qt6-declarative`, `qt6-base`, `qt6-svg`)
+- **Audio Server**: PipeWire & WirePlumber
+- **Terminal**: Ghostty (configurable to any terminal emulator)
+- **Dynamic Theming**: Matugen (optional, with native `ColorQuantizer` fallback)
 
 ---
 
@@ -41,6 +42,8 @@ crazydots/
 ├── install.sh                 # Safe installer script with dry-run support
 ├── uninstall.sh               # Safe removal script
 ├── packages.txt               # Tiered dependency manifest
+├── assets/                    # Assets and default vector wallpapers
+│   └── wallpapers/            # Bundled SVG wallpapers
 ├── docs/                      # Technical documentation
 │   ├── ARCHITECTURE.md        # Crazydots internal architecture and pure QML stack
 │   ├── COMPONENTS.md          # Component catalog and design system
@@ -49,11 +52,19 @@ crazydots/
 │   ├── DEVELOPMENT.md         # Developer guide and coding conventions
 │   ├── TESTING.md             # Testing and verification strategy
 │   ├── TROUBLESHOOTING.md     # Diagnostic procedures and common fixes
-│   └── SECURITY.md            # Security policy and sub-process execution
-├── shell/                     # Quickshell QML shell source code (M1-M7)
-├── themes/                    # Static color schemes and Matugen templates (M1, M6)
-├── wallpapers/                # Default wallpaper collection
-└── config/                    # Hyprland and Ghostty integration snippets (M8)
+│   └── SECURITY.md            # Security policy and process execution
+├── shell/                     # Quickshell QML shell source code
+│   ├── components/            # Reusable primitives (StyledRect, StyledText, ButtonBase)
+│   ├── panels/                # Desktop bar, launcher, dashboard, wallpaper panels
+│   ├── services/              # ThemeEngine, HyprlandService, TerminalService
+│   ├── Config.qml             # Centralized configuration & persistence singleton
+│   ├── Theme.qml              # Centralized theme engine singleton
+│   ├── Tokens.qml             # Centralized design tokens singleton
+│   ├── ScreenCanvas.qml       # Per-monitor static layer-shell window & modal coordinator
+│   └── Main.qml               # Shell coordinator & IPC handler
+├── tests/                     # Automated test suites
+│   └── run_tests.sh           # End-to-end test runner (268 assertions)
+└── themes/                    # Built-in static JSON themes (8 presets)
 ```
 
 ---
@@ -78,16 +89,43 @@ The crazydots engineering lifecycle executes in 10 sequential milestones:
 
 crazydots is developed without interfering with your existing desktop configuration or currently running shell.
 
-To test the shell in isolation:
+To run the shell in isolation:
 
 ```bash
 quickshell -p ~/crazydots/shell
 ```
 
-To run QML static analysis:
+To run the complete automated test suite (268 assertions + static analysis):
+
+```bash
+./tests/run_tests.sh
+```
+
+To run QML static analysis alone:
 
 ```bash
 qmllint shell/**/*.qml
+```
+
+### IPC Controls
+
+When crazydots is running, you can inspect and control the shell via Quickshell IPC:
+
+```bash
+# Toggle panels
+quickshell ipc -p ~/crazydots/shell call crazydots toggleLauncher
+quickshell ipc -p ~/crazydots/shell call crazydots toggleDashboard
+quickshell ipc -p ~/crazydots/shell call crazydots toggleWallpaperManager
+
+# Terminal actions
+quickshell ipc -p ~/crazydots/shell call crazydots launchTerminal
+
+# Theming & Wallpaper
+quickshell ipc -p ~/crazydots/shell call crazydots setTheme nord
+quickshell ipc -p ~/crazydots/shell call crazydots setWallpaper ~/Pictures/wall.png fit
+
+# Hyprland Compositor Actions
+quickshell ipc -p ~/crazydots/shell call crazydots focusWorkspace 2
 ```
 
 ---

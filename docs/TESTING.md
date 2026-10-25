@@ -37,18 +37,18 @@ This document describes the quality assurance strategy for crazydots.
 - Automated execution of all unit and integration test harnesses:
   - `TestThemeEngine.qml` (M1: 29 assertions)
   - `TestConfig.qml` (M2: 32 assertions)
-  - `TestBaseComponents.qml` (M3: 20 assertions)
+  - `TestBaseComponents.qml` (M3: 23 assertions)
   - `TestBar.qml` (M4: 29 assertions)
-  - `TestLauncher.qml` (M5: 30 assertions)
+  - `TestLauncher.qml` (M5: 37 assertions)
   - `TestWallpaper.qml` (M6: 39 assertions)
-  - `TestDashboard.qml` (M7: 47 assertions)
-  - `TestHyprlandGhostty.qml` (M8: 36 assertions)
-- Combined suite executes **262 automated assertions** with 0 failures.
+  - `TestDashboard.qml` (M7: 37 assertions)
+  - `TestHyprlandGhostty.qml` (M8: 42 assertions)
+- Combined suite executes **268 automated assertions** with 0 failures.
 - End-to-end live Quickshell process lifecycle and IPC protocol verification.
 
 ---
 
-## 2. Milestone Acceptance Criteria
+## 3. Milestone Acceptance Criteria
 
 Before any milestone is committed to Git:
 1. All newly introduced QML files must pass `qmllint`.

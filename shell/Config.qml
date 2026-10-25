@@ -279,10 +279,20 @@ QtObject {
         // --- Terminal validation ---
         if (raw.terminal && typeof raw.terminal === "object") {
             if (typeof raw.terminal.command === "string" && raw.terminal.command.trim().length > 0) {
-                res.terminal.command = raw.terminal.command.trim();
+                const cleanCmd = raw.terminal.command.trim();
+                if (/^[a-zA-Z0-9_\-\./]+$/.test(cleanCmd)) {
+                    res.terminal.command = cleanCmd;
+                } else {
+                    root.validationWarning("terminal.command", "Invalid terminal binary name: " + cleanCmd);
+                }
             }
             if (typeof raw.terminal.appId === "string" && raw.terminal.appId.trim().length > 0) {
-                res.terminal.appId = raw.terminal.appId.trim();
+                const cleanId = raw.terminal.appId.trim();
+                if (/^[a-zA-Z0-9_\-\.]+$/.test(cleanId)) {
+                    res.terminal.appId = cleanId;
+                } else {
+                    root.validationWarning("terminal.appId", "Invalid terminal application ID: " + cleanId);
+                }
             }
         }
 
@@ -560,6 +570,10 @@ QtObject {
     function setTerminalCommand(cmd: string): bool {
         if (!cmd || typeof cmd !== "string" || cmd.trim().length === 0) return false;
         const clean = cmd.trim();
+        if (!/^[a-zA-Z0-9_\-\./]+$/.test(clean)) {
+            console.warn("crazydots: Rejected invalid terminal command binary:", clean);
+            return false;
+        }
         if (root.terminalCommand === clean) return true;
         root.terminalCommand = clean;
         root.saveDebounced(350);
@@ -569,6 +583,10 @@ QtObject {
     function setTerminalAppId(id: string): bool {
         if (!id || typeof id !== "string" || id.trim().length === 0) return false;
         const clean = id.trim();
+        if (!/^[a-zA-Z0-9_\-\.]+$/.test(clean)) {
+            console.warn("crazydots: Rejected invalid terminal application ID:", clean);
+            return false;
+        }
         if (root.terminalAppId === clean) return true;
         root.terminalAppId = clean;
         root.saveDebounced(350);

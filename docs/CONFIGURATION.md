@@ -74,15 +74,16 @@ crazydots does not automatically edit your active compositor configuration. To b
 
 ```ini
 # Optional crazydots shortcuts (manual configuration)
-bind = $mainMod, SPACE, exec, quickshell ipc -p ~/.config/crazydots/shell call crazydots toggleLauncher
-bind = $mainMod, D, exec, quickshell ipc -p ~/.config/crazydots/shell call crazydots toggleDashboard
-bind = $mainMod, W, exec, quickshell ipc -p ~/.config/crazydots/shell call crazydots toggleWallpaperManager
-bind = $mainMod, RETURN, exec, quickshell ipc -p ~/.config/crazydots/shell call crazydots launchTerminal
+# When launched in development mode:
+bind = $mainMod, SPACE, exec, quickshell ipc -p ~/crazydots/shell call crazydots toggleLauncher
+bind = $mainMod, D, exec, quickshell ipc -p ~/crazydots/shell call crazydots toggleDashboard
+bind = $mainMod, W, exec, quickshell ipc -p ~/crazydots/shell call crazydots toggleWallpaperManager
+bind = $mainMod, RETURN, exec, quickshell ipc -p ~/crazydots/shell call crazydots launchTerminal
 ```
 
 ---
 
-## 3. Validation and Safety Rules
+## 4. Validation and Safety Rules
 1. **Never Crash on Bad Data**: If a string is provided where an integer is expected, `Config.qml` falls back to the default value.
 2. **Debounced Disk Writes**: Runtime changes (e.g., sliding volume or adjusting opacity) are debounced so the file is not written on every animation frame.
 3. **Atomic Replacement**: Configuration saving writes to a temporary file (`config.json.tmp`) before moving to `config.json`, preventing data corruption during unexpected shutdowns.

@@ -27,7 +27,7 @@ PanelWindow {
     readonly property string wallpaperSource: {
         const p = Config.wallpaperCurrent;
         if (!p || p.trim().length === 0) return "";
-        return p.startsWith("file://") ? p : ("file://" + p);
+        return Qt.resolvedUrl(p).toString();
     }
 
     readonly property int activeFillMode: {
