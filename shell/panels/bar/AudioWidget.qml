@@ -26,11 +26,11 @@ BarPill {
     // Highlight pill when muted
     highlighted: root.isMuted
 
-    // Click toggles mute
+    signal volumePopoverRequested()
+
+    // Left click opens contextual volume popover
     onClicked: {
-        if (root.sink && root.sink.audio) {
-            root.sink.audio.muted = !root.sink.audio.muted;
-        }
+        root.volumePopoverRequested();
     }
 
     // Wheel adjusts volume

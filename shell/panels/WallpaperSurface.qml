@@ -23,6 +23,9 @@ PanelWindow {
     // =========================================================================
     required property var screen
 
+    signal wallpaperManagerRequested()
+    signal themeManagerRequested()
+
     // Track active image source and fill mode from Config
     readonly property string wallpaperSource: {
         const p = Config.wallpaperCurrent;
@@ -55,13 +58,34 @@ PanelWindow {
 
     // Solid fallback color matches active theme background
     color: Theme.background
-    mask: Region {}
 
     Behavior on color {
         ColorAnimation {
             duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
             easing.type: Tokens.easingStandard.type
             easing.bezierCurve: Tokens.easingStandard.bezierCurve
+        }
+    }
+
+    // =========================================================================
+    // WALLPAPER GESTURE HANDLER
+    // Double-click left side: Wallpaper Manager.
+    // Double-click right side: Theme Manager.
+    // WlrLayer.Background sits behind all desktop windows, guaranteeing that
+    // application windows receive their own clicks without interception.
+    // =========================================================================
+    MouseArea {
+        id: bgGestureArea
+        anchors.fill: parent
+        cursorShape: Qt.ArrowCursor
+        acceptedButtons: Qt.LeftButton
+
+        onDoubleClicked: (mouse) => {
+            if (mouse.x < width / 2) {
+                root.wallpaperManagerRequested();
+            } else {
+                root.themeManagerRequested();
+            }
         }
     }
 

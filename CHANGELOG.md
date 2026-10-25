@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [1.1.0] - 2026-10-25 - Milestone M10: Interactive Popovers & Desktop UX Fixes
+
+#### Fixed
+- Application Launcher list clipping and search cutoff:
+  - Removed artificial 8-item slice from `filteredApplications` in `shell/panels/Launcher.qml`.
+  - Default view now displays all installed desktop applications sorted alphabetically.
+  - Added smooth keyboard scrolling via `positionViewAtIndex` and `boundsBehavior: Flickable.StopAtBounds`.
+  - Live query filtering operates across the complete catalog of installed applications.
+- Dashboard open failure and instant click-dismissal:
+  - Added click-consuming `MouseArea` to `card` in `shell/panels/Dashboard.qml`, preventing clicks on margins and content cards from falling through to `ScreenCanvas.qml` backdrop scrim.
+  - Replaced coordinate `y` property with `transform: Translate { y: ... }` to eliminate conflict with `anchors.fill: parent`.
+  - Guaranteed `isCurrentMonitor` is unconditionally `true` when single display is detected, preventing startup monitor-focus races.
+  - Moved theme selection grid out of the dashboard scroll area into a dedicated appearance modal.
+
+#### Added
+- Dedicated Theme Manager Modal (`shell/panels/ThemeManager.qml`):
+  - Clean 620×520 modal dialog for switching and previewing themes.
+  - Active palette swatch strip rendering all 8 core semantic tokens (`background`, `surface`, `foreground`, `accent`, etc.).
+  - 8 curated theme presets grid with dot preview swatches and live selection checkmarks.
+  - Dynamic wallpaper palette status and extraction button.
+  - Mutually exclusive with Launcher, Dashboard, and Wallpaper Manager.
+- Contextual Desktop Popovers (`shell/panels/popovers/`):
+  - **`ConnectivityPopover.qml`**: Wi-Fi radio toggle, active network details, signal glyphs, scrollable available networks list, rescan button, and truthful Bluetooth daemon status.
+  - **`VolumePopover.qml`**: PipeWire master output slider, mute toggle, microphone input level indicator, and mic mute toggle.
+  - **`BrightnessPopover.qml`**: Real-time display backlight slider via `brightnessctl`, percentage indicators, device name, and unavailable state handling.
+  - **`QuickTogglesPopover.qml`**: Unified 2×2 quick toggles (Wi-Fi, Bluetooth, Audio Mute, Animations), mini-sliders for volume and brightness, and direct triggers for Theme and Wallpaper managers.
+- Network & Hardware Backlight Services (`shell/services/`):
+  - **`NetworkService.qml`**: Asynchronous `nmcli` wrapper parsing radio status, active SSID, and discovered networks without password handling; truthfully probes Bluetooth daemon via `systemctl is-active bluetooth`.
+  - **`BrightnessService.qml`**: Hardware backlight controller using `brightnessctl` with clamp protection (1% to 100%) and safe handling when backlight hardware is absent.
+- Wallpaper Desktop Gestures (`shell/panels/WallpaperSurface.qml`):
+  - Double-click bare wallpaper on left half triggers Wallpaper Manager.
+  - Double-click bare wallpaper on right half triggers Theme Manager.
+  - Application windows resting above the background layer naturally receive their own clicks.
+- Extended IPC Interface in `shell/Main.qml`:
+  - `openThemeManager()`, `closeThemeManager()`, `toggleThemeManager()`, `isThemeManagerOpen()`.
+  - `openPopover(name)`, `closePopover()`, `togglePopover(name)`, `getActivePopover()`.
+  - `isNetworkAvailable()`, `getWifiEnabled()`, `toggleWifi()`, `getConnectedSsid()`, `rescanWifi()`.
+  - `isBrightnessAvailable()`, `getBrightness()`, `setBrightness(pct)`.
+- Automated Test Suite & Coverage Expansion:
+  - Created `shell/TestPopoversUX.qml` covering unconstrained launcher, dashboard lifecycle, theme manager, contextual popovers, and wallpaper gestures (41 passing assertions).
+  - Total automated test suite expanded to **309 passing assertions across 12 suites with 0 failures**.
+
 ### [1.0.0] - 2026-10-25 - Milestone M9: Verification, Documentation & Polish
 
 #### Added

@@ -30,6 +30,7 @@ Item {
     property bool active: false
 
     signal closeRequested()
+    signal themeManagerRequested()
     signal wallpaperManagerRequested()
     signal terminalLaunchRequested()
 
@@ -114,6 +115,11 @@ Item {
         color: Theme.alpha(Theme.surfaceElevated, Config.themeOpacity)
         border.color: Theme.alpha(Theme.accent, 0.4)
         border.width: Tokens.borderWidthThin
+
+        // MouseArea consumes clicks to prevent fall-through to backdrop scrim
+        MouseArea {
+            anchors.fill: parent
+        }
 
         // Scrollable content area to prevent viewport overflow
         Flickable {
@@ -388,7 +394,7 @@ Item {
                 }
 
                 // -------------------------------------------------------------
-                // 3. THEME SELECTION SECTION
+                // 3. APPEARANCE & THEME SECTION
                 // -------------------------------------------------------------
                 Column {
                     width: parent.width
@@ -397,7 +403,7 @@ Item {
                     Row {
                         width: parent.width
                         Text {
-                            text: "THEME PALETTE"
+                            text: "APPEARANCE & THEME"
                             font.family: Tokens.fontFamilyMono
                             font.pixelSize: Tokens.fontXs
                             font.weight: Tokens.weightBold
@@ -412,73 +418,81 @@ Item {
                             font.pixelSize: Tokens.fontXs
                             color: Theme.accent
                             elide: Text.ElideRight
-                            width: parent.width - 120
+                            width: parent.width - 140
                             horizontalAlignment: Text.AlignRight
                         }
                     }
 
-                    // 2-Column Grid of Built-in Themes
-                    Grid {
+                    Rectangle {
                         width: parent.width
-                        columns: 2
-                        spacing: Tokens.spaceXs
+                        height: 48
+                        radius: Tokens.radiusSm
+                        color: Theme.alpha(Theme.surface, 0.7)
+                        border.color: Theme.border
+                        border.width: Tokens.borderWidthThin
 
-                        Repeater {
-                            model: [
-                                { id: "crazydots-default", label: "crazydots", color: "#2ee6ca", bg: "#0d0e15" },
-                                { id: "catppuccin-mocha", label: "Catppuccin", color: "#89b4fa", bg: "#1e1e2e" },
-                                { id: "tokyo-night", label: "Tokyo Night", color: "#7aa2f7", bg: "#1a1b26" },
-                                { id: "nord", label: "Nord Frost", color: "#88c0d0", bg: "#2e3440" },
-                                { id: "gruvbox-dark", label: "Gruvbox", color: "#fe8019", bg: "#282828" },
-                                { id: "dracula", label: "Dracula", color: "#bd93f9", bg: "#282a36" },
-                                { id: "rose-pine", label: "Rosé Pine", color: "#ebbcba", bg: "#191724" },
-                                { id: "everforest", label: "Everforest", color: "#a7c080", bg: "#2b3339" }
-                            ]
+                        Row {
+                            anchors.fill: parent
+                            anchors.margins: Tokens.spaceSm
+                            spacing: Tokens.spaceSm
 
-                            delegate: Rectangle {
-                                id: themeItem
-                                required property var modelData
-                                required property int index
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "󰔎"
+                                font.family: Tokens.fontFamilyMono
+                                font.pixelSize: Tokens.fontLg
+                                color: Theme.accent
+                            }
 
-                                readonly property bool isSelected: Theme.activeThemeName === modelData.id
-                                width: (parent.width - Tokens.spaceXs) / 2
-                                height: 32
-                                radius: Tokens.radiusSm
-                                color: isSelected ? Theme.alpha(modelData.color, 0.18) : (themeMouse.containsMouse ? Theme.alpha(Theme.surface, 0.8) : Theme.surface)
-                                border.color: isSelected ? modelData.color : Theme.border
-                                border.width: isSelected ? 2 : Tokens.borderWidthThin
+                            Column {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 150
+                                spacing: 1
 
-                                Row {
+                                Text {
+                                    text: "Theme Manager"
+                                    font.family: Tokens.fontFamilySans
+                                    font.pixelSize: Tokens.fontSm
+                                    font.weight: Tokens.weightBold
+                                    color: Theme.foreground
+                                }
+
+                                Text {
+                                    text: "Presets, swatches & dynamic palettes"
+                                    font.family: Tokens.fontFamilySans
+                                    font.pixelSize: 10
+                                    color: Theme.mutedForeground
+                                }
+                            }
+
+                            // Open Button
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 70
+                                height: 26
+                                radius: Tokens.radiusFull
+                                color: tmBtnMouse.containsMouse ? Theme.alpha(Theme.accent, 0.2) : Theme.surface
+                                border.color: tmBtnMouse.containsMouse ? Theme.accent : Theme.border
+                                border.width: Tokens.borderWidthThin
+
+                                Text {
                                     anchors.centerIn: parent
-                                    spacing: Tokens.spaceSm
-
-                                    // Palette Accent Dot
-                                    Rectangle {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 10
-                                        height: 10
-                                        radius: Tokens.radiusFull
-                                        color: themeItem.modelData.color
-                                        border.color: Theme.border
-                                        border.width: Tokens.borderWidthThin
-                                    }
-
-                                    Text {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: themeItem.modelData.label
-                                        font.family: Tokens.fontFamilySans
-                                        font.pixelSize: Tokens.fontXs
-                                        font.weight: themeItem.isSelected ? Tokens.weightBold : Tokens.weightNormal
-                                        color: themeItem.isSelected ? Theme.foreground : Theme.mutedForeground
-                                    }
+                                    text: "MANAGE"
+                                    font.family: Tokens.fontFamilyMono
+                                    font.pixelSize: 9
+                                    font.weight: Tokens.weightBold
+                                    color: Theme.accent
                                 }
 
                                 MouseArea {
-                                    id: themeMouse
+                                    id: tmBtnMouse
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: Config.setThemeName(themeItem.modelData.id)
+                                    onClicked: {
+                                        root.closeRequested();
+                                        root.themeManagerRequested();
+                                    }
                                 }
                             }
                         }

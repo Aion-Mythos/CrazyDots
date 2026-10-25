@@ -24,9 +24,12 @@ PanelWindow {
     // =========================================================================
     required property var screen
 
-    // Signals for coordinating with future shell drawers (Launcher M5, Dashboard M7)
+    // Signals for coordinating shell drawers and popovers
     signal launcherTriggered()
     signal dashboardTriggered()
+    signal connectivityTriggered()
+    signal volumeTriggered()
+    signal quickTogglesTriggered()
 
     // =========================================================================
     // WAYLAND LAYER-SHELL CONFIGURATION
@@ -179,11 +182,42 @@ PanelWindow {
                 visible: Config.barShowTray
             }
 
-            // Audio Volume Meter & Mute Toggle
+            // Connectivity / Network Widget Pill
+            BarPill {
+                id: netPill
+                anchors.verticalCenter: parent.verticalCenter
+                onClicked: root.connectivityTriggered()
+
+                Row {
+                    spacing: Tokens.spaceXs
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "󰖩"
+                        font.family: Tokens.fontFamilyMono
+                        font.pixelSize: Tokens.fontSm
+                        color: Theme.accent
+                        renderType: Text.NativeRendering
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Net"
+                        font.family: Tokens.fontFamilySans
+                        font.pixelSize: Tokens.fontXs
+                        font.weight: Tokens.weightMedium
+                        color: Theme.foreground
+                        renderType: Text.NativeRendering
+                    }
+                }
+            }
+
+            // Audio Volume Meter & Popover Trigger
             AudioWidget {
                 id: audioWidget
                 anchors.verticalCenter: parent.verticalCenter
                 visible: Config.barShowAudio
+                onVolumePopoverRequested: root.volumeTriggered()
             }
 
             // Battery Status Meter
@@ -200,16 +234,49 @@ PanelWindow {
                 visible: Config.barShowClock
             }
 
-            // Dashboard / Quick Settings Toggle Button
+            // Quick Toggles Button
+            Rectangle {
+                id: quickTogglesBtn
+                anchors.verticalCenter: parent.verticalCenter
+                width: 30
+                height: 30
+                radius: Tokens.radiusSm
+                color: qtMouse.containsMouse ? Theme.alpha(Theme.accent, 0.25) : Theme.alpha(Theme.surfaceElevated, 0.7)
+                border.width: Tokens.borderWidthThin
+                border.color: qtMouse.containsMouse ? Theme.accent : Theme.border
+
+                Behavior on color {
+                    ColorAnimation { duration: Tokens.durationFast }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "󱐋"
+                    font.family: Tokens.fontFamilyMono
+                    font.pixelSize: Tokens.fontBase
+                    color: qtMouse.containsMouse ? Theme.accent : Theme.foreground
+                    renderType: Text.NativeRendering
+                }
+
+                MouseArea {
+                    id: qtMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.quickTogglesTriggered()
+                }
+            }
+
+            // Full Corner Dashboard Toggle Button
             Rectangle {
                 id: dashboardBtn
                 anchors.verticalCenter: parent.verticalCenter
                 width: 30
                 height: 30
                 radius: Tokens.radiusSm
-                color: dashMouse.containsMouse ? Theme.alpha(Theme.accent, 0.25) : Theme.alpha(Theme.surfaceElevated, 0.7)
+                color: dashMouse.containsMouse ? Theme.alpha(Theme.accentSecondary, 0.25) : Theme.alpha(Theme.surfaceElevated, 0.7)
                 border.width: Tokens.borderWidthThin
-                border.color: dashMouse.containsMouse ? Theme.accent : Theme.border
+                border.color: dashMouse.containsMouse ? Theme.accentSecondary : Theme.border
 
                 Behavior on color {
                     ColorAnimation { duration: Tokens.durationFast }
@@ -220,7 +287,7 @@ PanelWindow {
                     text: "󰍜"
                     font.family: Tokens.fontFamilyMono
                     font.pixelSize: Tokens.fontBase
-                    color: dashMouse.containsMouse ? Theme.accent : Theme.foreground
+                    color: dashMouse.containsMouse ? Theme.accentSecondary : Theme.foreground
                     renderType: Text.NativeRendering
                 }
 

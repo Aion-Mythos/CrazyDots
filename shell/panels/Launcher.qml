@@ -58,10 +58,10 @@ Item {
         if (!raw || raw.length === 0) return [];
 
         if (q === "") {
-            // Default: alphabetical list limited to configured max results
+            // Default: complete alphabetical list of all installed applications
             const sorted = raw.slice();
             sorted.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-            return sorted.slice(0, Config.launcherMaxResults);
+            return sorted;
         }
 
         const scored = [];
@@ -103,8 +103,7 @@ Item {
         });
 
         const results = [];
-        const limit = Math.min(scored.length, Config.launcherMaxResults);
-        for (let i = 0; i < limit; i++) {
+        for (let i = 0; i < scored.length; i++) {
             results.push(scored[i].app);
         }
         return results;
@@ -245,12 +244,14 @@ Item {
                         Keys.onDownPressed: {
                             if (root.filteredApplications.length > 0) {
                                 root.selectedIndex = (root.selectedIndex + 1) % root.filteredApplications.length;
+                                listView.positionViewAtIndex(root.selectedIndex, ListView.Contain);
                             }
                         }
 
                         Keys.onUpPressed: {
                             if (root.filteredApplications.length > 0) {
                                 root.selectedIndex = (root.selectedIndex - 1 + root.filteredApplications.length) % root.filteredApplications.length;
+                                listView.positionViewAtIndex(root.selectedIndex, ListView.Contain);
                             }
                         }
 
@@ -317,7 +318,7 @@ Item {
                     }
                 }
 
-                // Applications List View
+                // Applications List View with full scrolling support
                 ListView {
                     id: listView
                     anchors.fill: parent
@@ -327,6 +328,7 @@ Item {
                     currentIndex: root.selectedIndex
                     spacing: Tokens.spaceXxs
                     visible: root.filteredApplications.length > 0
+                    boundsBehavior: Flickable.StopAtBounds
 
                     delegate: Rectangle {
                         id: delegateCard

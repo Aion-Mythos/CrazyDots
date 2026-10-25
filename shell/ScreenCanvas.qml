@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import "."
 import "components"
 import "panels"
+import "panels/popovers"
 
 /**
  * ScreenCanvas.qml
@@ -16,8 +17,8 @@ import "panels"
  *   surface dimensions permanently static (ExclusionMode.Ignore).
  * - Manages input region masking via Quickshell's Region API:
  *   - Empty regions pass pointer clicks straight through to desktop windows.
- *   - When modal drawers (Launcher, Dashboard) are active, the surface claims pointer
- *     and keyboard focus and displays a dismissible backdrop scrim.
+ *   - When modal drawers (Launcher, Dashboard, ThemeManager, Popovers) are active,
+ *     the surface claims pointer and keyboard focus and displays a dismissible backdrop scrim.
  * - Prevents taking keyboard focus away from desktop windows when idle (keyboardFocus: None).
  */
 PanelWindow {
@@ -27,19 +28,28 @@ PanelWindow {
     // PUBLIC PROPERTIES & SCREEN BINDING
     // =========================================================================
     required property var screen
+    required property var networkService
+    required property var brightnessService
+
     property bool launcherOpen: false
     property bool wallpaperManagerOpen: false
     property bool dashboardOpen: false
+    property bool themeManagerOpen: false
+    property string activePopover: ""
 
     signal launcherCloseRequested()
     signal wallpaperManagerCloseRequested()
     signal dashboardCloseRequested()
+    signal themeManagerCloseRequested()
+    signal popoverCloseRequested()
     signal dynamicColorsRequested(string path)
     signal wallpaperManagerRequested()
+    signal themeManagerRequested()
     signal terminalLaunchRequested()
 
     // Multi-monitor active screen coordination
     readonly property bool isCurrentMonitor: {
+        if (Quickshell.screens.length <= 1) return true;
         if (!Hyprland.focusedMonitor) return true;
         const mon = Hyprland.monitorFor(canvas.screen);
         return mon ? (mon.id === Hyprland.focusedMonitor.id) : true;
@@ -48,7 +58,9 @@ PanelWindow {
     readonly property bool isLauncherActive: canvas.launcherOpen && canvas.isCurrentMonitor
     readonly property bool isWallpaperManagerActive: canvas.wallpaperManagerOpen && canvas.isCurrentMonitor
     readonly property bool isDashboardActive: canvas.dashboardOpen && canvas.isCurrentMonitor
-    readonly property bool isModalActive: isLauncherActive || isWallpaperManagerActive || isDashboardActive
+    readonly property bool isThemeManagerActive: canvas.themeManagerOpen && canvas.isCurrentMonitor
+    readonly property bool isPopoverActive: canvas.activePopover.length > 0 && canvas.isCurrentMonitor
+    readonly property bool isModalActive: isLauncherActive || isWallpaperManagerActive || isDashboardActive || isThemeManagerActive || isPopoverActive
 
     // Geometry margins & bar collision detection
     readonly property int barOffsetTop: (Config.barPosition === "top")
@@ -78,7 +90,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    // Dynamic keyboard focus: Exclusive while launcher/wallpaper modal is active, None when idle
+    // Dynamic keyboard focus: Exclusive while modal is active, None when idle
     WlrLayershell.keyboardFocus: canvas.isModalActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     // Transparent backdrop allows full desktop visibility
@@ -123,18 +135,28 @@ PanelWindow {
                 if (canvas.isLauncherActive) canvas.launcherCloseRequested();
                 if (canvas.isWallpaperManagerActive) canvas.wallpaperManagerCloseRequested();
                 if (canvas.isDashboardActive) canvas.dashboardCloseRequested();
+                if (canvas.isThemeManagerActive) canvas.themeManagerCloseRequested();
+                if (canvas.isPopoverActive) canvas.popoverCloseRequested();
             }
         }
     }
 
     // =========================================================================
-    // 2. SHELL SLOTS: LAUNCHER & WALLPAPER MANAGER MODALS
+    // 2. SHELL SLOTS: LAUNCHER, WALLPAPER MANAGER, & THEME MANAGER
     // =========================================================================
     Item {
         id: centerSlot
         anchors.centerIn: parent
-        width: canvas.isWallpaperManagerActive ? wallpaperManagerWidget.implicitWidth : launcherWidget.implicitWidth
-        height: canvas.isWallpaperManagerActive ? wallpaperManagerWidget.implicitHeight : launcherWidget.implicitHeight
+        width: {
+            if (canvas.isWallpaperManagerActive) return wallpaperManagerWidget.implicitWidth;
+            if (canvas.isThemeManagerActive) return themeManagerWidget.implicitWidth;
+            return launcherWidget.implicitWidth;
+        }
+        height: {
+            if (canvas.isWallpaperManagerActive) return wallpaperManagerWidget.implicitHeight;
+            if (canvas.isThemeManagerActive) return themeManagerWidget.implicitHeight;
+            return launcherWidget.implicitHeight;
+        }
 
         Launcher {
             id: launcherWidget
@@ -199,6 +221,37 @@ PanelWindow {
                 canvas.dynamicColorsRequested(path);
             }
         }
+
+        ThemeManager {
+            id: themeManagerWidget
+            anchors.centerIn: parent
+            active: canvas.isThemeManagerActive
+            visible: canvas.isThemeManagerActive
+            opacity: canvas.isThemeManagerActive ? 1.0 : 0.0
+            scale: canvas.isThemeManagerActive ? 1.0 : 0.94
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                    easing.type: Tokens.easingStandard.type
+                    easing.bezierCurve: Tokens.easingStandard.bezierCurve
+                }
+            }
+
+            Behavior on scale {
+                NumberAnimation {
+                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                    easing.type: Tokens.easingSpring.type
+                    easing.bezierCurve: Tokens.easingSpring.bezierCurve
+                }
+            }
+
+            onCloseRequested: canvas.themeManagerCloseRequested()
+            onWallpaperManagerRequested: canvas.wallpaperManagerRequested()
+            onDynamicColorsRequested: function(path) {
+                canvas.dynamicColorsRequested(path);
+            }
+        }
     }
 
     // =========================================================================
@@ -221,8 +274,8 @@ PanelWindow {
         anchors.leftMargin: isLeft ? canvas.marginHorizontal : 0
         anchors.rightMargin: isLeft ? 0 : canvas.marginHorizontal
 
-        width: Math.min(Config.dashboardWidth, parent.width - canvas.marginHorizontal * 2)
-        height: Math.min(Config.dashboardHeight, parent.height - canvas.barOffsetTop - canvas.barOffsetBottom)
+        width: Math.max(280, Math.min(Config.dashboardWidth, parent.width - canvas.marginHorizontal * 2))
+        height: Math.max(300, Math.min(Config.dashboardHeight, parent.height - canvas.barOffsetTop - canvas.barOffsetBottom))
 
         Dashboard {
             id: dashboardWidget
@@ -230,7 +283,17 @@ PanelWindow {
             active: canvas.isDashboardActive
             visible: opacity > 0
             opacity: canvas.isDashboardActive ? 1.0 : 0.0
-            y: canvas.isDashboardActive ? 0 : (cornerSlot.isTop ? -16 : 16)
+
+            transform: Translate {
+                y: canvas.isDashboardActive ? 0 : (cornerSlot.isTop ? -20 : 20)
+                Behavior on y {
+                    NumberAnimation {
+                        duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                        easing.type: Tokens.easingSpring.type
+                        easing.bezierCurve: Tokens.easingSpring.bezierCurve
+                    }
+                }
+            }
 
             Behavior on opacity {
                 NumberAnimation {
@@ -240,15 +303,8 @@ PanelWindow {
                 }
             }
 
-            Behavior on y {
-                NumberAnimation {
-                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
-                    easing.type: Tokens.easingSpring.type
-                    easing.bezierCurve: Tokens.easingSpring.bezierCurve
-                }
-            }
-
             onCloseRequested: canvas.dashboardCloseRequested()
+            onThemeManagerRequested: canvas.themeManagerRequested()
             onWallpaperManagerRequested: canvas.wallpaperManagerRequested()
             onTerminalLaunchRequested: canvas.terminalLaunchRequested()
 
@@ -257,6 +313,67 @@ PanelWindow {
                     forceActiveFocus();
                 }
             }
+        }
+    }
+
+    // =========================================================================
+    // 4. CONTEXTUAL POPOVERS SLOT
+    // Anchored adjacent to the bar controls on the right side.
+    // =========================================================================
+    Item {
+        id: popoverSlot
+        anchors.top: (Config.barPosition === "top") ? parent.top : undefined
+        anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
+        anchors.right: parent.right
+
+        anchors.topMargin: (Config.barPosition === "top") ? canvas.barOffsetTop : 0
+        anchors.bottomMargin: (Config.barPosition === "bottom") ? canvas.barOffsetBottom : 0
+        anchors.rightMargin: canvas.marginHorizontal
+
+        width: 350
+        height: 400
+        visible: canvas.isPopoverActive
+
+        ConnectivityPopover {
+            anchors.top: (Config.barPosition === "top") ? parent.top : undefined
+            anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
+            anchors.right: parent.right
+            active: canvas.activePopover === "connectivity" && canvas.isCurrentMonitor
+            visible: active
+            networkService: canvas.networkService
+            onCloseRequested: canvas.popoverCloseRequested()
+        }
+
+        VolumePopover {
+            anchors.top: (Config.barPosition === "top") ? parent.top : undefined
+            anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
+            anchors.right: parent.right
+            active: canvas.activePopover === "volume" && canvas.isCurrentMonitor
+            visible: active
+            onCloseRequested: canvas.popoverCloseRequested()
+        }
+
+        BrightnessPopover {
+            anchors.top: (Config.barPosition === "top") ? parent.top : undefined
+            anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
+            anchors.right: parent.right
+            active: canvas.activePopover === "brightness" && canvas.isCurrentMonitor
+            visible: active
+            brightnessService: canvas.brightnessService
+            onCloseRequested: canvas.popoverCloseRequested()
+        }
+
+        QuickTogglesPopover {
+            anchors.top: (Config.barPosition === "top") ? parent.top : undefined
+            anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
+            anchors.right: parent.right
+            active: canvas.activePopover === "quickToggles" && canvas.isCurrentMonitor
+            visible: active
+            networkService: canvas.networkService
+            brightnessService: canvas.brightnessService
+            onCloseRequested: canvas.popoverCloseRequested()
+            onThemeManagerRequested: canvas.themeManagerRequested()
+            onWallpaperManagerRequested: canvas.wallpaperManagerRequested()
         }
     }
 }

@@ -43,8 +43,9 @@ This document describes the quality assurance strategy for crazydots.
   - `TestWallpaper.qml` (M6: 39 assertions)
   - `TestDashboard.qml` (M7: 37 assertions)
   - `TestHyprlandGhostty.qml` (M8: 42 assertions)
-- Combined suite executes **268 automated assertions** with 0 failures.
-- End-to-end live Quickshell process lifecycle and IPC protocol verification.
+  - `TestPopoversUX.qml` (M10: 41 assertions)
+- Combined suite executes **309 automated assertions** with 0 failures.
+- End-to-end live Quickshell process lifecycle and IPC protocol verification across 28 IPC methods.
 
 ---
 

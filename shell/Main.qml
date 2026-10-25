@@ -10,26 +10,31 @@ import "panels"
  * Core shell coordinator for crazydots.
  *
  * Responsibilities:
- * - Bootstraps global services (Config, Theme, ThemeEngine).
+ * - Bootstraps global services (Config, Theme, ThemeEngine, NetworkService, BrightnessService).
  * - Exposes a safe, structured IPC interface via Quickshell.Io.IpcHandler.
  * - Coordinates per-monitor screen instantiation using Quickshell.screens and Variants.
- * - Manages the lifecycle of desktop panels without embedding individual panel logic.
+ * - Manages modal lifecycle (Launcher, WallpaperManager, ThemeManager, Dashboard, Popovers)
+ *   with strict deterministic mutual exclusivity.
  */
 Item {
     id: root
 
     // =========================================================================
-    // LAUNCHER & MODAL STATE MANAGEMENT
-    // Deterministic modal exclusivity: at most one modal drawer can be active.
-    // Opening a modal automatically dismisses any other open drawer.
+    // MODAL & POPOVER STATE MANAGEMENT
+    // Deterministic modal exclusivity: at most one modal drawer or popover can be active.
+    // Opening any modal or popover automatically dismisses all others.
     // =========================================================================
     property bool launcherOpen: false
     property bool wallpaperManagerOpen: false
     property bool dashboardOpen: false
+    property bool themeManagerOpen: false
+    property string activePopover: ""
 
     function openLauncher(): bool {
         root.wallpaperManagerOpen = false;
         root.dashboardOpen = false;
+        root.themeManagerOpen = false;
+        root.activePopover = "";
         root.launcherOpen = true;
         return true;
     }
@@ -40,11 +45,7 @@ Item {
     }
 
     function toggleLauncher(): bool {
-        if (root.launcherOpen) {
-            return root.closeLauncher();
-        } else {
-            return root.openLauncher();
-        }
+        return root.launcherOpen ? root.closeLauncher() : root.openLauncher();
     }
 
     function isLauncherOpen(): bool {
@@ -54,6 +55,8 @@ Item {
     function openWallpaperManager(): bool {
         root.launcherOpen = false;
         root.dashboardOpen = false;
+        root.themeManagerOpen = false;
+        root.activePopover = "";
         root.wallpaperManagerOpen = true;
         return true;
     }
@@ -64,20 +67,40 @@ Item {
     }
 
     function toggleWallpaperManager(): bool {
-        if (root.wallpaperManagerOpen) {
-            return root.closeWallpaperManager();
-        } else {
-            return root.openWallpaperManager();
-        }
+        return root.wallpaperManagerOpen ? root.closeWallpaperManager() : root.openWallpaperManager();
     }
 
     function isWallpaperManagerOpen(): bool {
         return root.wallpaperManagerOpen;
     }
 
+    function openThemeManager(): bool {
+        root.launcherOpen = false;
+        root.wallpaperManagerOpen = false;
+        root.dashboardOpen = false;
+        root.activePopover = "";
+        root.themeManagerOpen = true;
+        return true;
+    }
+
+    function closeThemeManager(): bool {
+        root.themeManagerOpen = false;
+        return true;
+    }
+
+    function toggleThemeManager(): bool {
+        return root.themeManagerOpen ? root.closeThemeManager() : root.openThemeManager();
+    }
+
+    function isThemeManagerOpen(): bool {
+        return root.themeManagerOpen;
+    }
+
     function openDashboard(): bool {
         root.launcherOpen = false;
         root.wallpaperManagerOpen = false;
+        root.themeManagerOpen = false;
+        root.activePopover = "";
         root.dashboardOpen = true;
         return true;
     }
@@ -88,17 +111,44 @@ Item {
     }
 
     function toggleDashboard(): bool {
-        if (root.dashboardOpen) {
-            return root.closeDashboard();
-        } else {
-            return root.openDashboard();
-        }
+        return root.dashboardOpen ? root.closeDashboard() : root.openDashboard();
     }
 
     function isDashboardOpen(): bool {
         return root.dashboardOpen;
     }
 
+    function openPopover(name: string): bool {
+        if (!name || typeof name !== "string") return false;
+        root.launcherOpen = false;
+        root.wallpaperManagerOpen = false;
+        root.themeManagerOpen = false;
+        root.dashboardOpen = false;
+        root.activePopover = name.trim();
+        return true;
+    }
+
+    function closePopover(): bool {
+        root.activePopover = "";
+        return true;
+    }
+
+    function togglePopover(name: string): bool {
+        const clean = (name || "").trim();
+        if (root.activePopover === clean) {
+            return root.closePopover();
+        } else {
+            return root.openPopover(clean);
+        }
+    }
+
+    function getActivePopover(): string {
+        return root.activePopover;
+    }
+
+    // =========================================================================
+    // SERVICE SINGLETONS
+    // =========================================================================
     ThemeEngine {
         id: themeEngine
     }
@@ -109,6 +159,14 @@ Item {
 
     TerminalService {
         id: terminalService
+    }
+
+    NetworkService {
+        id: networkService
+    }
+
+    BrightnessService {
+        id: brightnessService
     }
 
     // =========================================================================
@@ -190,7 +248,7 @@ Item {
             return root.isLauncherOpen();
         }
 
-        // Wallpaper & Theme IPC API
+        // Wallpaper IPC API
         function getWallpaper(): string {
             return Config.wallpaperCurrent;
         }
@@ -232,7 +290,24 @@ Item {
             return themeEngine.extractFromWallpaper(path);
         }
 
-        // Dashboard & Quick Settings IPC API
+        // Dedicated Theme Manager IPC API
+        function openThemeManager(): bool {
+            return root.openThemeManager();
+        }
+
+        function closeThemeManager(): bool {
+            return root.closeThemeManager();
+        }
+
+        function toggleThemeManager(): bool {
+            return root.toggleThemeManager();
+        }
+
+        function isThemeManagerOpen(): bool {
+            return root.isThemeManagerOpen();
+        }
+
+        // Dashboard IPC API
         function openDashboard(): bool {
             return root.openDashboard();
         }
@@ -273,6 +348,57 @@ Item {
             return Config.setDashboardHeight(h);
         }
 
+        // Contextual Popovers IPC API
+        function openPopover(name: string): bool {
+            return root.openPopover(name);
+        }
+
+        function closePopover(): bool {
+            return root.closePopover();
+        }
+
+        function togglePopover(name: string): bool {
+            return root.togglePopover(name);
+        }
+
+        function getActivePopover(): string {
+            return root.getActivePopover();
+        }
+
+        // Connectivity & Network IPC API
+        function isNetworkAvailable(): bool {
+            return networkService.isAvailable;
+        }
+
+        function getWifiEnabled(): bool {
+            return networkService.wifiEnabled;
+        }
+
+        function toggleWifi(): bool {
+            return networkService.toggleWifi();
+        }
+
+        function getConnectedSsid(): string {
+            return networkService.connectedSsid;
+        }
+
+        function rescanWifi(): bool {
+            return networkService.rescan();
+        }
+
+        // Brightness IPC API
+        function isBrightnessAvailable(): bool {
+            return brightnessService.isAvailable;
+        }
+
+        function getBrightness(): int {
+            return brightnessService.brightnessPercent;
+        }
+
+        function setBrightness(pct: int): bool {
+            return brightnessService.setBrightness(pct);
+        }
+
         // Hyprland Integration IPC API
         function isHyprlandAvailable(): bool {
             return hyprlandService.isAvailable;
@@ -298,7 +424,7 @@ Item {
             return hyprlandService.dispatch(request);
         }
 
-        // Terminal (Ghostty) Integration IPC API
+        // Terminal Integration IPC API
         function isTerminalAvailable(): bool {
             return terminalService.isTerminalAvailable;
         }
@@ -336,6 +462,8 @@ Item {
             WallpaperSurface {
                 required property var modelData
                 screen: modelData
+                onWallpaperManagerRequested: root.openWallpaperManager()
+                onThemeManagerRequested: root.openThemeManager()
             }
         }
     }
@@ -352,13 +480,22 @@ Item {
             ScreenCanvas {
                 required property var modelData
                 screen: modelData
+                networkService: networkService
+                brightnessService: brightnessService
                 launcherOpen: root.launcherOpen
                 wallpaperManagerOpen: root.wallpaperManagerOpen
                 dashboardOpen: root.dashboardOpen
+                themeManagerOpen: root.themeManagerOpen
+                activePopover: root.activePopover
+
                 onLauncherCloseRequested: root.closeLauncher()
                 onWallpaperManagerCloseRequested: root.closeWallpaperManager()
                 onDashboardCloseRequested: root.closeDashboard()
+                onThemeManagerCloseRequested: root.closeThemeManager()
+                onPopoverCloseRequested: root.closePopover()
                 onWallpaperManagerRequested: root.openWallpaperManager()
+                onThemeManagerRequested: root.openThemeManager()
+
                 onTerminalLaunchRequested: function() {
                     terminalService.launchTerminal();
                 }
@@ -388,6 +525,18 @@ Item {
 
                 onDashboardTriggered: {
                     root.toggleDashboard();
+                }
+
+                onConnectivityTriggered: {
+                    root.togglePopover("connectivity");
+                }
+
+                onVolumeTriggered: {
+                    root.togglePopover("volume");
+                }
+
+                onQuickTogglesTriggered: {
+                    root.togglePopover("quickToggles");
                 }
             }
         }

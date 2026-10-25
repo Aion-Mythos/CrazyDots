@@ -1,0 +1,5 @@
+module crazydots.panels.popovers
+ConnectivityPopover 1.0 ConnectivityPopover.qml
+VolumePopover 1.0 VolumePopover.qml
+BrightnessPopover 1.0 BrightnessPopover.qml
+QuickTogglesPopover 1.0 QuickTogglesPopover.qml

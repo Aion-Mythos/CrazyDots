@@ -80,3 +80,17 @@ Updating one configuration domain (e.g. switching themes or selecting a wallpape
 ### 4.3 Credentials & Secrets
 - crazydots never requests, stores, or logs passwords, private keys, or credentials.
 - Privilege elevation (if required by external tools) is delegated entirely to system polkit agents.
+
+---
+
+## 5. Network & Hardware Control Subprocess Safety
+
+### 5.1 NetworkManager (`nmcli`) Integration
+- **Array-Based Process Invocations**: Network status inspection and scanning execute via structured argument arrays (e.g., `command: ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list"]`), avoiding shell expansion vulnerabilities.
+- **Zero Wi-Fi Password Exposure**: crazydots never collects, queries, stores, or logs Wi-Fi passwords. The UI only initiates direct connections for open networks; connection requests for secured networks delegate authentication entirely to system authentication agents (`gnome-keyring`, `kwallet`, or `wpa_supplicant`).
+- **Truthful Bluetooth Daemon Probing**: Bluetooth daemon status is verified non-interactively via `systemctl is-active bluetooth`. The shell never assumes or simulates Bluetooth hardware or paired devices if the system daemon is inactive.
+
+### 5.2 Backlight Control (`brightnessctl`) Integration
+- **Privilege-Free Operations**: Brightness read and write operations execute via `/usr/bin/brightnessctl`, interacting with the Linux `/sys/class/backlight` kernel subsystem through `systemd-logind` and `udev` without requiring `sudo` or privileged escalation.
+- **Zero Blackout Clamping**: Brightness updates enforce strict software clamping between 1% and 100%, preventing display blackouts caused by setting brightness to 0%.
+- **Safe Hardware Absence Handling**: Systems lacking backlight hardware controllers (e.g., desktop monitors using DDC/CI) report unavailable status gracefully without throwing unhandled exceptions.

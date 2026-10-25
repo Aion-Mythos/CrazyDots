@@ -15,6 +15,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/services/ThemeEngine.qml" \
     "$SCRIPT_DIR/shell/services/HyprlandService.qml" \
     "$SCRIPT_DIR/shell/services/TerminalService.qml" \
+    "$SCRIPT_DIR/shell/services/NetworkService.qml" \
+    "$SCRIPT_DIR/shell/services/BrightnessService.qml" \
     "$SCRIPT_DIR/shell/components/StyledRect.qml" \
     "$SCRIPT_DIR/shell/components/StyledText.qml" \
     "$SCRIPT_DIR/shell/components/ButtonBase.qml" \
@@ -23,6 +25,11 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/panels/WallpaperSurface.qml" \
     "$SCRIPT_DIR/shell/panels/WallpaperManager.qml" \
     "$SCRIPT_DIR/shell/panels/Dashboard.qml" \
+    "$SCRIPT_DIR/shell/panels/ThemeManager.qml" \
+    "$SCRIPT_DIR/shell/panels/popovers/ConnectivityPopover.qml" \
+    "$SCRIPT_DIR/shell/panels/popovers/VolumePopover.qml" \
+    "$SCRIPT_DIR/shell/panels/popovers/BrightnessPopover.qml" \
+    "$SCRIPT_DIR/shell/panels/popovers/QuickTogglesPopover.qml" \
     "$SCRIPT_DIR/shell/panels/bar/BarPill.qml" \
     "$SCRIPT_DIR/shell/panels/bar/Workspaces.qml" \
     "$SCRIPT_DIR/shell/panels/bar/ActiveWindow.qml" \
@@ -37,7 +44,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/TestLauncher.qml" \
     "$SCRIPT_DIR/shell/TestWallpaper.qml" \
     "$SCRIPT_DIR/shell/TestDashboard.qml" \
-    "$SCRIPT_DIR/shell/TestHyprlandGhostty.qml"
+    "$SCRIPT_DIR/shell/TestHyprlandGhostty.qml" \
+    "$SCRIPT_DIR/shell/TestPopoversUX.qml"
 
 echo "==> qmllint passed with 0 errors!"
 
@@ -65,7 +73,10 @@ quickshell -p "$SCRIPT_DIR/shell/TestDashboard.qml"
 echo "==> 9. Executing M8 Hyprland & Ghostty Integration test suite in Quickshell..."
 quickshell -p "$SCRIPT_DIR/shell/TestHyprlandGhostty.qml"
 
-echo "==> 10. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
+echo "==> 10. Executing M10 Popovers & Desktop UX test suite in Quickshell..."
+quickshell -p "$SCRIPT_DIR/shell/TestPopoversUX.qml"
+
+echo "==> 11. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
 # Start shell.qml in background with isolated config path
 quickshell -p "$SCRIPT_DIR/shell" &
 SHELL_PID=$!
@@ -109,6 +120,24 @@ IPC_LAUNCH_AFTER_DASH=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isL
 IPC_DASH_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closeDashboard)
 IPC_DASH_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isDashboardOpen)
 
+# Theme Manager IPC verification
+IPC_TM_INIT=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isThemeManagerOpen)
+IPC_TM_OPEN=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots openThemeManager)
+IPC_TM_CHECK=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isThemeManagerOpen)
+IPC_TM_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closeThemeManager)
+IPC_TM_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isThemeManagerOpen)
+
+# Contextual Popover IPC verification
+IPC_POP_INIT=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getActivePopover)
+IPC_POP_OPEN=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots openPopover "connectivity")
+IPC_POP_CHECK=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getActivePopover)
+IPC_POP_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closePopover)
+IPC_POP_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getActivePopover)
+
+# Network & Hardware Brightness Services IPC
+IPC_NET_AVAIL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isNetworkAvailable)
+IPC_BRIGHT_AVAIL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isBrightnessAvailable)
+
 # Hyprland & Terminal (Ghostty) IPC verification
 IPC_HYPR_AVAIL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isHyprlandAvailable)
 IPC_TERM_AVAIL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isTerminalAvailable)
@@ -148,6 +177,12 @@ echo "    IPC isDashboardOpen after launcher open: $IPC_DASH_AFTER_LAUNCH"
 echo "    IPC isLauncherOpen after launcher open: $IPC_LAUNCH_CHECK"
 echo "    IPC isLauncherOpen after dashboard reopen: $IPC_LAUNCH_AFTER_DASH"
 echo "    IPC isDashboardOpen after close: $IPC_DASH_FINAL"
+echo "    IPC isThemeManagerOpen after open: $IPC_TM_CHECK"
+echo "    IPC isThemeManagerOpen after close: $IPC_TM_FINAL"
+echo "    IPC getActivePopover after open: $IPC_POP_CHECK"
+echo "    IPC getActivePopover after close: $IPC_POP_FINAL"
+echo "    IPC isNetworkAvailable: $IPC_NET_AVAIL"
+echo "    IPC isBrightnessAvailable: $IPC_BRIGHT_AVAIL"
 echo "    IPC isHyprlandAvailable: $IPC_HYPR_AVAIL"
 echo "    IPC isTerminalAvailable: $IPC_TERM_AVAIL"
 echo "    IPC getTerminalCommand: $IPC_TERM_CMD"
@@ -183,6 +218,16 @@ if [[ "$IPC_DASH_AFTER_LAUNCH" != *"false"* || "$IPC_LAUNCH_AFTER_DASH" != *"fal
     exit 1
 fi
 
+if [[ "$IPC_TM_CHECK" != *"true"* || "$IPC_TM_FINAL" != *"false"* ]]; then
+    echo "ERROR: IPC theme manager toggling failed!" >&2
+    exit 1
+fi
+
+if [[ "$IPC_POP_CHECK" != *"connectivity"* || "$IPC_POP_FINAL" == *"connectivity"* ]]; then
+    echo "ERROR: IPC popover toggling failed!" >&2
+    exit 1
+fi
+
 if [[ "$IPC_HYPR_AVAIL" != *"true"* ]]; then
     echo "ERROR: IPC isHyprlandAvailable failed!" >&2
     exit 1
@@ -193,7 +238,7 @@ if [[ "$IPC_TERM_AVAIL" != *"true"* || "$IPC_TERM_CMD" != *"ghostty"* ]]; then
     exit 1
 fi
 
-echo "==> 11. Verifying live environment integrity..."
+echo "==> 12. Verifying live environment integrity..."
 # Check that ~/.config/hypr and Caelestia are untouched
 if [[ ! -f "$HOME/.config/hypr/hyprland.lua" ]]; then
     echo "ERROR: ~/.config/hypr/hyprland.lua missing!" >&2
