@@ -17,6 +17,7 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/components/StyledText.qml" \
     "$SCRIPT_DIR/shell/components/ButtonBase.qml" \
     "$SCRIPT_DIR/shell/panels/Bar.qml" \
+    "$SCRIPT_DIR/shell/panels/Launcher.qml" \
     "$SCRIPT_DIR/shell/panels/bar/BarPill.qml" \
     "$SCRIPT_DIR/shell/panels/bar/Workspaces.qml" \
     "$SCRIPT_DIR/shell/panels/bar/ActiveWindow.qml" \
@@ -27,7 +28,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/TestThemeEngine.qml" \
     "$SCRIPT_DIR/shell/TestConfig.qml" \
     "$SCRIPT_DIR/shell/TestBaseComponents.qml" \
-    "$SCRIPT_DIR/shell/TestBar.qml"
+    "$SCRIPT_DIR/shell/TestBar.qml" \
+    "$SCRIPT_DIR/shell/TestLauncher.qml"
 
 echo "==> qmllint passed with 0 errors!"
 
@@ -43,7 +45,10 @@ quickshell -p "$SCRIPT_DIR/shell/TestBaseComponents.qml"
 echo "==> 5. Executing M4 Desktop Bar test suite in Quickshell..."
 quickshell -p "$SCRIPT_DIR/shell/TestBar.qml"
 
-echo "==> 6. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
+echo "==> 6. Executing M5 Application Launcher test suite in Quickshell..."
+quickshell -p "$SCRIPT_DIR/shell/TestLauncher.qml"
+
+echo "==> 7. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
 # Start shell.qml in background with isolated config path
 quickshell -p "$SCRIPT_DIR/shell" &
 SHELL_PID=$!
@@ -55,6 +60,11 @@ IPC_THEME=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getTheme)
 IPC_SCREENS=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getScreenCount)
 IPC_BAR_POS=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getBarPosition)
 IPC_BAR_FLOAT=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isBarFloating)
+IPC_LAUNCHER_INIT=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isLauncherOpen)
+IPC_LAUNCHER_OPEN=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots openLauncher)
+IPC_LAUNCHER_CHECK=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isLauncherOpen)
+IPC_LAUNCHER_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closeLauncher)
+IPC_LAUNCHER_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isLauncherOpen)
 
 # Terminate test instance cleanly
 kill "$SHELL_PID" 2>/dev/null || true
@@ -65,13 +75,23 @@ echo "    IPC getTheme response: $IPC_THEME"
 echo "    IPC getScreenCount response: $IPC_SCREENS"
 echo "    IPC getBarPosition response: $IPC_BAR_POS"
 echo "    IPC isBarFloating response: $IPC_BAR_FLOAT"
+echo "    IPC isLauncherOpen initial: $IPC_LAUNCHER_INIT"
+echo "    IPC openLauncher response: $IPC_LAUNCHER_OPEN"
+echo "    IPC isLauncherOpen after open: $IPC_LAUNCHER_CHECK"
+echo "    IPC closeLauncher response: $IPC_LAUNCHER_CLOSE"
+echo "    IPC isLauncherOpen after close: $IPC_LAUNCHER_FINAL"
 
 if [[ "$IPC_PING" != *"pong"* ]]; then
     echo "ERROR: IPC ping failed!" >&2
     exit 1
 fi
 
-echo "==> 7. Verifying live environment integrity..."
+if [[ "$IPC_LAUNCHER_CHECK" != *"true"* || "$IPC_LAUNCHER_FINAL" != *"false"* ]]; then
+    echo "ERROR: IPC launcher toggling failed!" >&2
+    exit 1
+fi
+
+echo "==> 8. Verifying live environment integrity..."
 # Check that ~/.config/hypr and Caelestia are untouched
 if [[ ! -f "$HOME/.config/hypr/hyprland.lua" ]]; then
     echo "ERROR: ~/.config/hypr/hyprland.lua missing!" >&2

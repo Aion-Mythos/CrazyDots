@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.6.0] - 2026-10-25 - Milestone M5: Application Launcher
+
+#### Added
+- Native modular Application Launcher modal in `shell/panels/Launcher.qml`:
+  - Discovers installed desktop applications directly via `Quickshell.DesktopEntries`.
+  - Scored search engine matching application names, generic descriptions, comments, IDs, and keywords.
+  - Case-insensitive filtering and alphabetical sorting honoring `Config.launcherMaxResults`.
+  - Immediate keyboard focus on opening with arrow key navigation (`Up`/`Down`), launch activation (`Enter`/`Return`), and dismissal (`Escape`).
+  - Safe desktop entry execution via `DesktopEntry.execute()` with duplicate launch prevention cooldown timer.
+  - Application icon rendering with `Quickshell.Widgets.IconImage` and fallback Nerd Font application glyphs.
+  - Interactive item delegates with hover, focus, and selection states.
+- Modal layer-shell input architecture in `shell/ScreenCanvas.qml`:
+  - Centered modal launcher dialog with smooth spring scale and opacity animations.
+  - Fullscreen dismissible backdrop scrim (`color: Theme.alpha("#000000", 0.45)`) that closes the launcher on outside clicks.
+  - Dynamic `WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive` when active, transitioning to `WlrKeyboardFocus.None` when idle.
+  - Dynamic input masking switching between `launcherMask` when active and `emptyMask` when idle, guaranteeing 100% click-through to apps when closed.
+  - Multi-monitor targeting matching `Hyprland.focusedMonitor`.
+- Extended IPC interface in `shell/Main.qml`:
+  - `openLauncher()`, `closeLauncher()`, `toggleLauncher()`, and `isLauncherOpen()`.
+  - Integrated launcher button on desktop bar (`Bar.qml: onLauncherTriggered`).
+- Automated test suite `shell/TestLauncher.qml` (29 passing assertions) covering application discovery, filtering, selection, signal emissions, focus transitions, and icon resolution.
+- Updated `tests/run_tests.sh` to execute M1 through M5 suites, achieving 140 passing assertions with 0 errors.
+
 ### [0.5.0] - 2026-10-25 - Milestone M4: Desktop Bar
 
 #### Added

@@ -19,8 +19,28 @@ Item {
     id: root
 
     // =========================================================================
-    // GLOBAL HEADLESS SERVICES
+    // LAUNCHER STATE MANAGEMENT
     // =========================================================================
+    property bool launcherOpen: false
+
+    function openLauncher(): bool {
+        root.launcherOpen = true;
+        return true;
+    }
+
+    function closeLauncher(): bool {
+        root.launcherOpen = false;
+        return true;
+    }
+
+    function toggleLauncher(): bool {
+        root.launcherOpen = !root.launcherOpen;
+        return root.launcherOpen;
+    }
+
+    function isLauncherOpen(): bool {
+        return root.launcherOpen;
+    }
     ThemeEngine {
         id: themeEngine
     }
@@ -86,6 +106,23 @@ Item {
             }
             return list;
         }
+
+        // Launcher IPC API
+        function openLauncher(): bool {
+            return root.openLauncher();
+        }
+
+        function closeLauncher(): bool {
+            return root.closeLauncher();
+        }
+
+        function toggleLauncher(): bool {
+            return root.toggleLauncher();
+        }
+
+        function isLauncherOpen(): bool {
+            return root.isLauncherOpen();
+        }
     }
 
     // =========================================================================
@@ -100,6 +137,8 @@ Item {
             ScreenCanvas {
                 required property var modelData
                 screen: modelData
+                launcherOpen: root.launcherOpen
+                onLauncherCloseRequested: root.closeLauncher()
             }
         }
     }
@@ -118,7 +157,7 @@ Item {
                 screen: modelData
 
                 onLauncherTriggered: {
-                    console.log("crazydots: Launcher triggered from Bar on screen", modelData ? modelData.name : "");
+                    root.toggleLauncher();
                 }
 
                 onDashboardTriggered: {

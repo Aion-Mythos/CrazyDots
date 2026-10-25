@@ -47,6 +47,7 @@ All components consume values from `Tokens.qml` and `Theme.qml`. Hardcoded pixel
 
 ### 2.2 Panels (`shell/panels/`)
 - **`Bar.qml`**: Desktop taskbar containing workspaces, clock, tray, battery, and audio controls.
+- **`Launcher.qml`**: Modal application launcher with live desktop-entry search input, keyboard navigation, and application delegates.
 
 #### 2.2.1 Bar Sub-Widgets (`shell/panels/bar/`)
 - **`BarPill.qml`**: Interactive capsule container handling hover, press, click, and mouse wheel actions with smooth color transitions.
@@ -58,6 +59,5 @@ All components consume values from `Tokens.qml` and `Theme.qml`. Hardcoded pixel
 - **`TrayWidget.qml`**: StatusNotifierItem (SNI) system tray with icon rendering via `Quickshell.Widgets.IconImage` and left/right click actions.
 
 ### 2.3 Drawers & Modals (Future Milestones)
-- **`Launcher.qml`**: Modal application launcher with live search input, keyboard navigation, and application delegates.
 - **`Dashboard.qml`**: Corner slide-in control center containing quick toggles, audio sink selectors, and MPRIS media player.
 - **`WallpaperManager.qml`**: Visual wallpaper selector with thumbnail grid and dynamic theme trigger.
