@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.3.0] - 2026-10-25 - Milestone M2: Configuration & Persistence Service
+
+#### Added
+- Centralized configuration singleton in `shell/Config.qml`:
+  - Granular, reactive properties for bar, theme, wallpaper, animations, launcher, and dashboard preferences.
+  - Strict input validation and boundary clamping for all user configuration fields.
+  - Safe recovery for missing configuration files and malformed JSON syntax with diagnostic warnings.
+  - Debounced (`saveDebounced`), atomic disk writes (`atomicWrites: true`) via `Quickshell.Io.FileView` preventing I/O spamming and data corruption.
+  - Decoupled persistent user settings from dynamic wallpaper color palettes, synchronizing with `Theme` without circular dependencies.
+- Registered `Config` singleton in `shell/qmldir`.
+- Added automated test harness `shell/TestConfig.qml` with 32 passing assertions covering defaults, validation, runtime updates, round-trip persistence, and reset handling.
+- Updated `tests/run_tests.sh` to execute both M1 and M2 test suites under `qmllint` and Quickshell.
+
 ### [0.2.0] - 2026-10-25 - Milestone M1: Design Tokens & Theme Engine
 
 #### Added
