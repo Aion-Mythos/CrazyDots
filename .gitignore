@@ -1,0 +1,30 @@
+# crazydots .gitignore
+
+# Qt / QML cache and generated files
+*.qmlc
+*.jsc
+.qml/
+.rcc/
+qrc_*.cpp
+*.moc
+moc_*.cpp
+
+# Editor & IDE directories
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.#*
+
+# Build and temporary files
+build/
+dist/
+*.log
+/tmp/
+
+# Local testing and state caches
+.cache/
+.local/
+state.json
+local-overrides.json

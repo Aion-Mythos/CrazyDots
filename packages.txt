@@ -1,0 +1,31 @@
+# crazydots — Package Dependencies Manifest
+
+# Tier 1: Required Core
+# The shell cannot run without these components.
+quickshell-git          # Desktop shell host with Wayland layer-shell protocol support
+hyprland                # Dynamic tiling Wayland compositor
+qt6-declarative         # Qt Quick and QML runtime engine
+qt6-base                # Qt 6 core base libraries
+pipewire                # Audio server and media routing
+wireplumber             # PipeWire session manager
+
+# Tier 2: Recommended Tools
+# Highly recommended for full visual identity and terminal integration.
+matugen                 # Dynamic Material You color scheme generator from wallpapers
+ghostty                 # Primary GPU-accelerated terminal
+ttf-jetbrains-mono-nerd # Monospace typography with Nerd Font glyphs
+otf-caskaydiacove-nerd  # Alternative Nerd Font typography
+
+# Tier 3: Optional Integrations
+# The shell will gracefully detect and adapt if these are not installed.
+brightnessctl           # Hardware display backlight control
+grim                    # Wayland screenshot tool
+slurp                   # Wayland interactive region selector
+wl-clipboard            # Wayland clipboard utilities (wl-copy, wl-paste)
+networkmanager          # nmcli integration for network status
+
+# Tier 4: Development & Quality Assurance
+# Used during development, static analysis, and verification.
+qmllint                 # Static syntax and semantic linter for QML
+git                     # Local version control system
+python                  # Scripting and test runners
