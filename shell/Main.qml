@@ -20,11 +20,16 @@ Item {
 
     // =========================================================================
     // LAUNCHER & MODAL STATE MANAGEMENT
+    // Deterministic modal exclusivity: at most one modal drawer can be active.
+    // Opening a modal automatically dismisses any other open drawer.
     // =========================================================================
     property bool launcherOpen: false
     property bool wallpaperManagerOpen: false
+    property bool dashboardOpen: false
 
     function openLauncher(): bool {
+        root.wallpaperManagerOpen = false;
+        root.dashboardOpen = false;
         root.launcherOpen = true;
         return true;
     }
@@ -35,8 +40,11 @@ Item {
     }
 
     function toggleLauncher(): bool {
-        root.launcherOpen = !root.launcherOpen;
-        return root.launcherOpen;
+        if (root.launcherOpen) {
+            return root.closeLauncher();
+        } else {
+            return root.openLauncher();
+        }
     }
 
     function isLauncherOpen(): bool {
@@ -44,6 +52,8 @@ Item {
     }
 
     function openWallpaperManager(): bool {
+        root.launcherOpen = false;
+        root.dashboardOpen = false;
         root.wallpaperManagerOpen = true;
         return true;
     }
@@ -54,12 +64,39 @@ Item {
     }
 
     function toggleWallpaperManager(): bool {
-        root.wallpaperManagerOpen = !root.wallpaperManagerOpen;
-        return root.wallpaperManagerOpen;
+        if (root.wallpaperManagerOpen) {
+            return root.closeWallpaperManager();
+        } else {
+            return root.openWallpaperManager();
+        }
     }
 
     function isWallpaperManagerOpen(): bool {
         return root.wallpaperManagerOpen;
+    }
+
+    function openDashboard(): bool {
+        root.launcherOpen = false;
+        root.wallpaperManagerOpen = false;
+        root.dashboardOpen = true;
+        return true;
+    }
+
+    function closeDashboard(): bool {
+        root.dashboardOpen = false;
+        return true;
+    }
+
+    function toggleDashboard(): bool {
+        if (root.dashboardOpen) {
+            return root.closeDashboard();
+        } else {
+            return root.openDashboard();
+        }
+    }
+
+    function isDashboardOpen(): bool {
+        return root.dashboardOpen;
     }
 
     ThemeEngine {
@@ -186,6 +223,47 @@ Item {
         function extractDynamicColors(path: string): bool {
             return themeEngine.extractFromWallpaper(path);
         }
+
+        // Dashboard & Quick Settings IPC API
+        function openDashboard(): bool {
+            return root.openDashboard();
+        }
+
+        function closeDashboard(): bool {
+            return root.closeDashboard();
+        }
+
+        function toggleDashboard(): bool {
+            return root.toggleDashboard();
+        }
+
+        function isDashboardOpen(): bool {
+            return root.isDashboardOpen();
+        }
+
+        function getDashboardCorner(): string {
+            return Config.dashboardCorner;
+        }
+
+        function setDashboardCorner(corner: string): bool {
+            return Config.setDashboardCorner(corner);
+        }
+
+        function getDashboardWidth(): int {
+            return Config.dashboardWidth;
+        }
+
+        function setDashboardWidth(w: int): bool {
+            return Config.setDashboardWidth(w);
+        }
+
+        function getDashboardHeight(): int {
+            return Config.dashboardHeight;
+        }
+
+        function setDashboardHeight(h: int): bool {
+            return Config.setDashboardHeight(h);
+        }
     }
 
     // =========================================================================
@@ -218,8 +296,11 @@ Item {
                 screen: modelData
                 launcherOpen: root.launcherOpen
                 wallpaperManagerOpen: root.wallpaperManagerOpen
+                dashboardOpen: root.dashboardOpen
                 onLauncherCloseRequested: root.closeLauncher()
                 onWallpaperManagerCloseRequested: root.closeWallpaperManager()
+                onDashboardCloseRequested: root.closeDashboard()
+                onWallpaperManagerRequested: root.openWallpaperManager()
                 onDynamicColorsRequested: function(path) {
                     themeEngine.extractFromWallpaper(path);
                 }
@@ -245,7 +326,7 @@ Item {
                 }
 
                 onDashboardTriggered: {
-                    console.log("crazydots: Dashboard triggered from Bar on screen", modelData ? modelData.name : "");
+                    root.toggleDashboard();
                 }
             }
         }

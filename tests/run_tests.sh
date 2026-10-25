@@ -20,6 +20,7 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/panels/Launcher.qml" \
     "$SCRIPT_DIR/shell/panels/WallpaperSurface.qml" \
     "$SCRIPT_DIR/shell/panels/WallpaperManager.qml" \
+    "$SCRIPT_DIR/shell/panels/Dashboard.qml" \
     "$SCRIPT_DIR/shell/panels/bar/BarPill.qml" \
     "$SCRIPT_DIR/shell/panels/bar/Workspaces.qml" \
     "$SCRIPT_DIR/shell/panels/bar/ActiveWindow.qml" \
@@ -32,7 +33,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/TestBaseComponents.qml" \
     "$SCRIPT_DIR/shell/TestBar.qml" \
     "$SCRIPT_DIR/shell/TestLauncher.qml" \
-    "$SCRIPT_DIR/shell/TestWallpaper.qml"
+    "$SCRIPT_DIR/shell/TestWallpaper.qml" \
+    "$SCRIPT_DIR/shell/TestDashboard.qml"
 
 echo "==> qmllint passed with 0 errors!"
 
@@ -54,7 +56,10 @@ quickshell -p "$SCRIPT_DIR/shell/TestLauncher.qml"
 echo "==> 7. Executing M6 Wallpaper Manager & Dynamic Color Engine test suite in Quickshell..."
 quickshell -p "$SCRIPT_DIR/shell/TestWallpaper.qml"
 
-echo "==> 8. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
+echo "==> 8. Executing M7 Corner Dashboard & Quick Settings test suite in Quickshell..."
+quickshell -p "$SCRIPT_DIR/shell/TestDashboard.qml"
+
+echo "==> 9. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
 # Start shell.qml in background with isolated config path
 quickshell -p "$SCRIPT_DIR/shell" &
 SHELL_PID=$!
@@ -82,6 +87,22 @@ IPC_WP_MGR_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isWallpa
 IPC_WP_SET=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots setWallpaper "/home/aion/crazydots/assets/wallpapers/crazydots-dark-mesh.svg" "fit")
 IPC_WP_GET=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getWallpaper)
 
+IPC_DASH_CORNER=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getDashboardCorner)
+IPC_DASH_WIDTH=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getDashboardWidth)
+IPC_DASH_HEIGHT=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots getDashboardHeight)
+IPC_DASH_INIT=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isDashboardOpen)
+IPC_DASH_OPEN=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots openDashboard)
+IPC_DASH_CHECK=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isDashboardOpen)
+# Exclusivity: opening launcher must close dashboard
+IPC_EXCL_LAUNCH=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots openLauncher)
+IPC_DASH_AFTER_LAUNCH=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isDashboardOpen)
+IPC_LAUNCH_CHECK=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isLauncherOpen)
+# Re-opening dashboard must close launcher
+IPC_DASH_REOPEN=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots openDashboard)
+IPC_LAUNCH_AFTER_DASH=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isLauncherOpen)
+IPC_DASH_CLOSE=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots closeDashboard)
+IPC_DASH_FINAL=$(quickshell ipc -p "$SCRIPT_DIR/shell" call crazydots isDashboardOpen)
+
 # Terminate test instance cleanly
 kill "$SHELL_PID" 2>/dev/null || true
 wait "$SHELL_PID" 2>/dev/null || true
@@ -105,6 +126,16 @@ echo "    IPC closeWallpaperManager response: $IPC_WP_MGR_CLOSE"
 echo "    IPC isWallpaperManagerOpen after close: $IPC_WP_MGR_FINAL"
 echo "    IPC setWallpaper response: $IPC_WP_SET"
 echo "    IPC getWallpaper response: $IPC_WP_GET"
+echo "    IPC getDashboardCorner: $IPC_DASH_CORNER"
+echo "    IPC getDashboardWidth: $IPC_DASH_WIDTH"
+echo "    IPC getDashboardHeight: $IPC_DASH_HEIGHT"
+echo "    IPC isDashboardOpen initial: $IPC_DASH_INIT"
+echo "    IPC openDashboard response: $IPC_DASH_OPEN"
+echo "    IPC isDashboardOpen after open: $IPC_DASH_CHECK"
+echo "    IPC isDashboardOpen after launcher open: $IPC_DASH_AFTER_LAUNCH"
+echo "    IPC isLauncherOpen after launcher open: $IPC_LAUNCH_CHECK"
+echo "    IPC isLauncherOpen after dashboard reopen: $IPC_LAUNCH_AFTER_DASH"
+echo "    IPC isDashboardOpen after close: $IPC_DASH_FINAL"
 
 if [[ "$IPC_PING" != *"pong"* ]]; then
     echo "ERROR: IPC ping failed!" >&2
@@ -126,7 +157,17 @@ if [[ "$IPC_WP_GET" != *"crazydots-dark-mesh.svg"* ]]; then
     exit 1
 fi
 
-echo "==> 9. Verifying live environment integrity..."
+if [[ "$IPC_DASH_CHECK" != *"true"* || "$IPC_DASH_FINAL" != *"false"* ]]; then
+    echo "ERROR: IPC dashboard toggling failed!" >&2
+    exit 1
+fi
+
+if [[ "$IPC_DASH_AFTER_LAUNCH" != *"false"* || "$IPC_LAUNCH_AFTER_DASH" != *"false"* ]]; then
+    echo "ERROR: IPC modal exclusivity failed!" >&2
+    exit 1
+fi
+
+echo "==> 10. Verifying live environment integrity..."
 # Check that ~/.config/hypr and Caelestia are untouched
 if [[ ! -f "$HOME/.config/hypr/hyprland.lua" ]]; then
     echo "ERROR: ~/.config/hypr/hyprland.lua missing!" >&2

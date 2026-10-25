@@ -50,6 +50,7 @@ All components consume values from `Tokens.qml` and `Theme.qml`. Hardcoded pixel
 - **`Launcher.qml`**: Modal application launcher with live desktop-entry search input, keyboard navigation, and application delegates.
 - **`WallpaperSurface.qml`**: Background layer-shell window rendering wallpaper images with fill modes (fill, fit, center, tile), crossfades, and theme background fallback.
 - **`WallpaperManager.qml`**: Visual wallpaper selector modal with asynchronous directory scanning, thumbnail grid, search filter, and dynamic color synthesis.
+- **`Dashboard.qml`**: Corner slide-in control center containing quick settings, audio volume track, battery status, theme selector, wallpaper info, and motion preferences.
 
 #### 2.2.1 Bar Sub-Widgets (`shell/panels/bar/`)
 - **`BarPill.qml`**: Interactive capsule container handling hover, press, click, and mouse wheel actions with smooth color transitions.
@@ -60,5 +61,3 @@ All components consume values from `Tokens.qml` and `Theme.qml`. Hardcoded pixel
 - **`BatteryWidget.qml`**: UPower battery indicator with charging/discharging states, capacity thresholds, low-battery warning, and automatic collapse on desktop systems.
 - **`TrayWidget.qml`**: StatusNotifierItem (SNI) system tray with icon rendering via `Quickshell.Widgets.IconImage` and left/right click actions.
 
-### 2.3 Drawers & Modals (Future Milestones)
-- **`Dashboard.qml`**: Corner slide-in control center containing quick toggles, audio sink selectors, and MPRIS media player.

@@ -504,6 +504,30 @@ QtObject {
         return true;
     }
 
+    function setDashboardCorner(corner: string): bool {
+        if (["top-right", "top-left", "bottom-right", "bottom-left"].indexOf(corner) === -1) return false;
+        if (root.dashboardCorner === corner) return true;
+        root.dashboardCorner = corner;
+        root.saveDebounced(350);
+        return true;
+    }
+
+    function setDashboardWidth(w: int): bool {
+        const clamped = Math.max(260, Math.min(800, w));
+        if (root.dashboardWidth === clamped) return true;
+        root.dashboardWidth = clamped;
+        root.saveDebounced(350);
+        return true;
+    }
+
+    function setDashboardHeight(h: int): bool {
+        const clamped = Math.max(300, Math.min(1200, h));
+        if (root.dashboardHeight === clamped) return true;
+        root.dashboardHeight = clamped;
+        root.saveDebounced(350);
+        return true;
+    }
+
     // =========================================================================
     // BOOTSTRAP LIFECYCLE
     // =========================================================================

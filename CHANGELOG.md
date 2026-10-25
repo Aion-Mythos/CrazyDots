@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.8.0] - 2026-10-25 - Milestone M7: Corner Dashboard & Quick Settings
+
+#### Added
+- Dedicated Corner Dashboard panel in `shell/panels/Dashboard.qml`:
+  - Dynamically anchors to all configured corners (`top-right`, `top-left`, `bottom-right`, `bottom-left`) without clipping or viewport overflow.
+  - Geometry bounds clamped to monitor dimensions minus margin and bar reservation offsets.
+  - Scrollable `Flickable` layout supporting compact display sizes down to 1920×1080 and below.
+  - Smooth corner slide and opacity transitions coordinated with `Config.animationsEnabled` and `Config.animationSpeed`.
+  - Immediate keyboard focus on opening and dismissal via Escape key.
+- Truthful Quick Settings controls:
+  - Pipewire audio card: interactive volume slider track with real-time percentage and click-to-mute toggle. Graceful fallback on unbound/missing sinks.
+  - UPower battery card: charging/discharging glyphs, level indicator, and truthful "AC Power Connected" fallback for desktop systems without battery hardware.
+  - System clock and full calendar date display via `Quickshell.SystemClock`.
+  - Theme palette selector: 2-column grid offering 8 built-in themes with color preview dots, active selection indicator, and reactive application via `Config.setThemeName()`.
+  - Wallpaper information card: active wallpaper filename and mode display, with one-click access button to open the Wallpaper Manager.
+  - Motion & animation preferences: interface animations toggle (`ENABLED`/`OFF`) and speed multiplier pills (`0.5x`, `1.0x`, `1.5x`).
+- Deterministic Modal Exclusivity in `shell/Main.qml`:
+  - Opening the Dashboard automatically closes the Launcher and Wallpaper Manager.
+  - Opening the Launcher or Wallpaper Manager automatically closes the Dashboard.
+  - Zero panel competition for `WlrKeyboardFocus.Exclusive`.
+- Extended IPC interface in `shell/Main.qml`:
+  - `openDashboard()`, `closeDashboard()`, `toggleDashboard()`, `isDashboardOpen()`.
+  - `getDashboardCorner()`, `setDashboardCorner(corner)`.
+  - `getDashboardWidth()`, `setDashboardWidth(w)`.
+  - `getDashboardHeight()`, `setDashboardHeight(h)`.
+- Configuration helper setters in `shell/Config.qml`:
+  - `setDashboardCorner()`, `setDashboardWidth()`, and `setDashboardHeight()` with schema validation, bounds clamping, and debounced disk writes.
+- Desktop bar integration in `shell/panels/Bar.qml`:
+  - Bar status/dashboard button directly triggers `Main.toggleDashboard()`.
+- Automated test suite `shell/TestDashboard.qml` (47 passing assertions) covering configuration clamping, dimensions, audio/battery truthful states, theme switching, motion preferences, modal exclusivity, and focus elevation.
+- Updated `tests/run_tests.sh` to run static analysis (`qmllint`) and test suites M1 through M7, totaling **226 passing assertions with 0 errors**.
+
 ### [0.7.0] - 2026-10-25 - Milestone M6: Wallpaper Manager & Dynamic Color Engine
 
 #### Added

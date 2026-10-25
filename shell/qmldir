@@ -8,3 +8,5 @@ Bar 1.0 panels/Bar.qml
 Launcher 1.0 panels/Launcher.qml
 WallpaperSurface 1.0 panels/WallpaperSurface.qml
 WallpaperManager 1.0 panels/WallpaperManager.qml
+Dashboard 1.0 panels/Dashboard.qml
+

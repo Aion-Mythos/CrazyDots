@@ -29,10 +29,13 @@ PanelWindow {
     required property var screen
     property bool launcherOpen: false
     property bool wallpaperManagerOpen: false
+    property bool dashboardOpen: false
 
     signal launcherCloseRequested()
     signal wallpaperManagerCloseRequested()
+    signal dashboardCloseRequested()
     signal dynamicColorsRequested(string path)
+    signal wallpaperManagerRequested()
 
     // Multi-monitor active screen coordination
     readonly property bool isCurrentMonitor: {
@@ -43,7 +46,19 @@ PanelWindow {
 
     readonly property bool isLauncherActive: canvas.launcherOpen && canvas.isCurrentMonitor
     readonly property bool isWallpaperManagerActive: canvas.wallpaperManagerOpen && canvas.isCurrentMonitor
-    readonly property bool isModalActive: isLauncherActive || isWallpaperManagerActive
+    readonly property bool isDashboardActive: canvas.dashboardOpen && canvas.isCurrentMonitor
+    readonly property bool isModalActive: isLauncherActive || isWallpaperManagerActive || isDashboardActive
+
+    // Geometry margins & bar collision detection
+    readonly property int barOffsetTop: (Config.barPosition === "top")
+        ? (Config.barHeight + (Config.barFloating ? Config.barMargin * 2 : 0) + Tokens.spaceSm)
+        : Tokens.spaceMd
+
+    readonly property int barOffsetBottom: (Config.barPosition === "bottom")
+        ? (Config.barHeight + (Config.barFloating ? Config.barMargin * 2 : 0) + Tokens.spaceSm)
+        : Tokens.spaceMd
+
+    readonly property int marginHorizontal: Tokens.spaceMd
 
     // =========================================================================
     // WINDOW GEOMETRY & WAYLAND LAYER PROPERTIES
@@ -106,6 +121,7 @@ PanelWindow {
             onClicked: {
                 if (canvas.isLauncherActive) canvas.launcherCloseRequested();
                 if (canvas.isWallpaperManagerActive) canvas.wallpaperManagerCloseRequested();
+                if (canvas.isDashboardActive) canvas.dashboardCloseRequested();
             }
         }
     }
@@ -184,11 +200,61 @@ PanelWindow {
         }
     }
 
+    // =========================================================================
+    // 3. CORNER DASHBOARD DRAWER
+    // Dynamically positioned according to Config.dashboardCorner.
+    // =========================================================================
     Item {
         id: cornerSlot
-        anchors.top: parent.top
-        anchors.right: parent.right
-        width: Config.dashboardWidth
-        height: Config.dashboardHeight
+
+        readonly property bool isTop: Config.dashboardCorner.indexOf("top") !== -1
+        readonly property bool isLeft: Config.dashboardCorner.indexOf("left") !== -1
+
+        anchors.top: isTop ? parent.top : undefined
+        anchors.bottom: isTop ? undefined : parent.bottom
+        anchors.left: isLeft ? parent.left : undefined
+        anchors.right: isLeft ? undefined : parent.right
+
+        anchors.topMargin: isTop ? canvas.barOffsetTop : 0
+        anchors.bottomMargin: isTop ? 0 : canvas.barOffsetBottom
+        anchors.leftMargin: isLeft ? canvas.marginHorizontal : 0
+        anchors.rightMargin: isLeft ? 0 : canvas.marginHorizontal
+
+        width: Math.min(Config.dashboardWidth, parent.width - canvas.marginHorizontal * 2)
+        height: Math.min(Config.dashboardHeight, parent.height - canvas.barOffsetTop - canvas.barOffsetBottom)
+
+        Dashboard {
+            id: dashboardWidget
+            anchors.fill: parent
+            active: canvas.isDashboardActive
+            visible: opacity > 0
+            opacity: canvas.isDashboardActive ? 1.0 : 0.0
+            y: canvas.isDashboardActive ? 0 : (cornerSlot.isTop ? -16 : 16)
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                    easing.type: Tokens.easingStandard.type
+                    easing.bezierCurve: Tokens.easingStandard.bezierCurve
+                }
+            }
+
+            Behavior on y {
+                NumberAnimation {
+                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                    easing.type: Tokens.easingSpring.type
+                    easing.bezierCurve: Tokens.easingSpring.bezierCurve
+                }
+            }
+
+            onCloseRequested: canvas.dashboardCloseRequested()
+            onWallpaperManagerRequested: canvas.wallpaperManagerRequested()
+
+            onActiveChanged: {
+                if (active) {
+                    forceActiveFocus();
+                }
+            }
+        }
     }
 }

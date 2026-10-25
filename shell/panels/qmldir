@@ -3,3 +3,4 @@ Bar 1.0 Bar.qml
 Launcher 1.0 Launcher.qml
 WallpaperSurface 1.0 WallpaperSurface.qml
 WallpaperManager 1.0 WallpaperManager.qml
+Dashboard 1.0 Dashboard.qml
