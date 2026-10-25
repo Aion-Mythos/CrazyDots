@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Widgets
 import ".."
 import "../components"
@@ -8,13 +9,16 @@ import "../components"
  * Launcher.qml
  * Native application launcher modal for crazydots.
  *
- * Responsibilities:
- * - Enumerates installed desktop applications using Quickshell.DesktopEntries.
- * - Filters applications reactively by name, generic name, comment, id, and keywords.
- * - Supports keyboard navigation (Up/Down, Enter to launch, Escape to close).
- * - Displays application icons via Quickshell.Widgets.IconImage with graceful glyph fallbacks.
- * - Prevents duplicate activations with execution debouncing.
- * - Emits clean closeRequested() and appLaunched() signals.
+ * Visual & Interactive Reference: launcher_primary_reference.png (image(9).png)
+ *
+ * Design features:
+ * - Floating lower-middle rounded translucent panel themed with crazydots design tokens.
+ * - Application list on top with full unconstrained catalog displayed immediately.
+ * - Rows display app icon (32px), bold app name, and secondary description/comment.
+ * - Understated selection highlight with smooth keyboard-first navigation (Up/Down/Return).
+ * - Integrated search & command capsule pinned at the bottom with placeholder `Type ">" for commands`.
+ * - Real command mode: typing `> <cmd>` runs the command in Ghostty/configured terminal emulator.
+ * - Subtle Iris brand badge integrated into the search capsule.
  */
 Item {
     id: root
@@ -29,10 +33,19 @@ Item {
 
     signal closeRequested()
     signal appLaunched(var app)
+    signal commandLaunched(string command)
 
-    // Sizing
-    implicitWidth: 580
-    implicitHeight: launcherCard.height
+    // Sizing matching primary visual reference
+    implicitWidth: 540
+    implicitHeight: 480
+
+    // Command Mode Detection
+    readonly property bool isCommandMode: root.searchQuery.trim().startsWith(">")
+    readonly property string commandText: {
+        const trimmed = root.searchQuery.trim();
+        if (!trimmed.startsWith(">")) return "";
+        return trimmed.substring(1).trim();
+    }
 
     // =========================================================================
     // DESKTOP APPLICATION SEARCH ENGINE
@@ -44,7 +57,6 @@ Item {
         const list = [];
         for (let i = 0; i < raw.length; i++) {
             const entry = raw[i];
-            // Expose only user-visible desktop entries
             if (!entry.noDisplay) {
                 list.push(entry);
             }
@@ -53,6 +65,9 @@ Item {
     }
 
     readonly property var filteredApplications: {
+        // In command mode, we do not filter apps
+        if (root.isCommandMode) return [];
+
         const q = root.searchQuery.trim().toLowerCase();
         const raw = root.allApplications;
         if (!raw || raw.length === 0) return [];
@@ -109,7 +124,6 @@ Item {
         return results;
     }
 
-    // Keep selected index within bounds when results change
     onFilteredApplicationsChanged: {
         if (root.selectedIndex >= root.filteredApplications.length) {
             root.selectedIndex = Math.max(0, root.filteredApplications.length - 1);
@@ -129,6 +143,13 @@ Item {
     }
 
     function launchSelected() {
+        if (root.isCommandMode) {
+            if (root.commandText.length > 0) {
+                root.launchCommand(root.commandText);
+            }
+            return;
+        }
+
         if (root.filteredApplications.length > 0 && root.selectedIndex >= 0 && root.selectedIndex < root.filteredApplications.length) {
             root.launchApp(root.filteredApplications[root.selectedIndex]);
         }
@@ -152,6 +173,29 @@ Item {
         cooldownTimer.restart();
     }
 
+    // Safe command execution in terminal
+    Process {
+        id: commandRunner
+        running: false
+    }
+
+    function launchCommand(cmd) {
+        if (!cmd || root.isLaunching) return;
+        root.isLaunching = true;
+
+        console.log("crazydots: Launching shell command in terminal:", cmd);
+        try {
+            commandRunner.command = [Config.terminalCommand, "-e", "sh", "-c", cmd];
+            commandRunner.running = true;
+        } catch (e) {
+            console.error("crazydots: Failed to run command:", e);
+        }
+
+        root.commandLaunched(cmd);
+        root.closeRequested();
+        cooldownTimer.restart();
+    }
+
     Timer {
         id: cooldownTimer
         interval: 400
@@ -170,397 +214,356 @@ Item {
         return "image://icon/" + icon;
     }
 
+    // Reset state on active visibility change
+    onActiveChanged: {
+        if (active) {
+            root.focusSearch();
+        } else {
+            root.resetSearch();
+        }
+    }
+
     // =========================================================================
     // LAUNCHER MODAL CARD
     // =========================================================================
     StyledRect {
         id: launcherCard
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: parent.width
-        height: contentColumn.height
+        anchors.fill: parent
         radius: Tokens.radiusLg
         elevated: true
-        color: Theme.alpha(Theme.surfaceElevated, 0.95)
-        border.color: Theme.alpha(Theme.accent, 0.4)
+        color: Theme.alpha(Theme.surfaceElevated, Math.min(Config.themeOpacity, 0.94))
+        border.color: Theme.alpha(Theme.accent, 0.35)
         border.width: Tokens.borderWidthThin
 
-        Column {
-            id: contentColumn
-            width: parent.width
-            spacing: 0
+        // MouseArea to consume background clicks
+        MouseArea {
+            anchors.fill: parent
+        }
 
-            // -----------------------------------------------------------------
-            // 1. SEARCH INPUT HEADER
-            // -----------------------------------------------------------------
-            Item {
-                id: searchHeader
-                width: parent.width
-                height: 64
+        // =====================================================================
+        // 1. APPLICATION RESULTS LIST (Takes all space above search)
+        // =====================================================================
+        Item {
+            id: listContainer
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: searchFooter.top
+            anchors.margins: Tokens.spaceSm
+            clip: true
 
-                Row {
-                    anchors.fill: parent
-                    anchors.leftMargin: Tokens.spaceLg
-                    anchors.rightMargin: Tokens.spaceLg
-                    spacing: Tokens.spaceMd
+            // Standard Application List
+            ListView {
+                id: listView
+                anchors.fill: parent
+                model: root.filteredApplications
+                currentIndex: root.selectedIndex
+                spacing: Tokens.spaceXxs
+                visible: !root.isCommandMode && root.filteredApplications.length > 0
+                boundsBehavior: Flickable.StopAtBounds
 
-                    // Search Glyph
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "󰍉"
-                        font.family: Tokens.fontFamilyMono
-                        font.pixelSize: Tokens.fontTitle
-                        color: searchInput.activeFocus ? Theme.accent : Theme.mutedForeground
-                        renderType: Text.NativeRendering
+                delegate: Rectangle {
+                    id: delegateCard
+                    required property var modelData
+                    required property int index
 
-                        Behavior on color {
-                            ColorAnimation { duration: Tokens.durationFast }
-                        }
+                    readonly property bool isSelected: index === root.selectedIndex
+                    readonly property bool isHovered: itemMouse.containsMouse
+
+                    width: listView.width
+                    height: 52
+                    radius: Tokens.radiusMd
+
+                    color: {
+                        if (delegateCard.isSelected) return Theme.alpha(Theme.selection, 0.45);
+                        if (delegateCard.isHovered) return Theme.alpha(Theme.surface, 0.5);
+                        return "transparent";
                     }
 
-                    // Search TextInput
-                    TextInput {
-                        id: searchInput
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - 90
-                        font.family: Tokens.fontFamilySans
-                        font.pixelSize: Tokens.fontLg
-                        color: Theme.foreground
-                        clip: true
-                        selectByMouse: true
-                        renderType: Text.NativeRendering
+                    border.width: delegateCard.isSelected ? Tokens.borderWidthThin : 0
+                    border.color: Theme.alpha(Theme.accent, 0.6)
 
-                        // Placeholder Text
-                        Text {
-                            anchors.fill: parent
-                            text: "Search applications..."
-                            font.family: Tokens.fontFamilySans
-                            font.pixelSize: Tokens.fontLg
-                            color: Theme.alpha(Theme.mutedForeground, 0.6)
-                            visible: searchInput.text.length === 0
-                            renderType: Text.NativeRendering
-                        }
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: Tokens.spaceMd
+                        anchors.rightMargin: Tokens.spaceMd
+                        spacing: Tokens.spaceMd
 
-                        // Keyboard Navigation Handlers
-                        Keys.onDownPressed: {
-                            if (root.filteredApplications.length > 0) {
-                                root.selectedIndex = (root.selectedIndex + 1) % root.filteredApplications.length;
-                                listView.positionViewAtIndex(root.selectedIndex, ListView.Contain);
+                        // Application Icon (32px)
+                        Item {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 32
+                            height: 32
+
+                            IconImage {
+                                id: appIcon
+                                anchors.fill: parent
+                                source: root.resolveIconSource(delegateCard.modelData ? delegateCard.modelData.icon : "")
+                                visible: appIcon.status === Image.Ready
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                visible: appIcon.status !== Image.Ready
+                                text: "󰣇"
+                                font.family: Tokens.fontFamilyMono
+                                font.pixelSize: Tokens.fontXl
+                                color: delegateCard.isSelected ? Theme.accent : Theme.foreground
                             }
                         }
 
-                        Keys.onUpPressed: {
-                            if (root.filteredApplications.length > 0) {
-                                root.selectedIndex = (root.selectedIndex - 1 + root.filteredApplications.length) % root.filteredApplications.length;
-                                listView.positionViewAtIndex(root.selectedIndex, ListView.Contain);
+                        // Application Name and Description
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 80
+                            spacing: 2
+
+                            Text {
+                                width: parent.width
+                                text: delegateCard.modelData ? (delegateCard.modelData.name || "") : ""
+                                font.family: Tokens.fontFamilySans
+                                font.pixelSize: Tokens.fontSm
+                                font.weight: Tokens.weightBold
+                                color: delegateCard.isSelected ? Theme.accent : Theme.foreground
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                width: parent.width
+                                text: {
+                                    if (!delegateCard.modelData) return "";
+                                    return delegateCard.modelData.genericName || delegateCard.modelData.comment || delegateCard.modelData.id || "";
+                                }
+                                font.family: Tokens.fontFamilySans
+                                font.pixelSize: 11
+                                color: Theme.mutedForeground
+                                elide: Text.ElideRight
                             }
                         }
 
-                        Keys.onReturnPressed: root.launchSelected()
-                        Keys.onEnterPressed: root.launchSelected()
-                        Keys.onEscapePressed: root.closeRequested()
-                    }
-
-                    // Clear Search Button
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 24
-                        height: 24
-                        radius: Tokens.radiusFull
-                        visible: searchInput.text.length > 0
-                        color: clearMouse.containsMouse ? Theme.alpha(Theme.foreground, 0.2) : "transparent"
-
+                        // Return Hint on Selected
                         Text {
-                            anchors.centerIn: parent
-                            text: "✕"
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "↵"
                             font.family: Tokens.fontFamilySans
                             font.pixelSize: Tokens.fontSm
-                            color: Theme.mutedForeground
-                        }
-
-                        MouseArea {
-                            id: clearMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                searchInput.text = "";
-                                searchInput.forceActiveFocus();
-                            }
+                            color: Theme.accent
+                            visible: delegateCard.isSelected
                         }
                     }
-                }
 
-                // Divider line below search bar
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    height: Tokens.borderWidthThin
-                    color: Theme.alpha(Theme.border, 0.6)
+                    MouseArea {
+                        id: itemMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onEntered: root.selectedIndex = delegateCard.index
+                        onClicked: root.launchApp(delegateCard.modelData)
+                    }
                 }
             }
 
-            // -----------------------------------------------------------------
-            // 2. RESULTS LIST
-            // -----------------------------------------------------------------
-            Item {
-                id: resultsArea
-                width: parent.width
-                height: root.filteredApplications.length > 0
-                        ? Math.min(root.filteredApplications.length * Config.launcherItemHeight, 420)
-                        : (root.searchQuery.length > 0 ? 120 : 60)
+            // Command Mode View
+            Rectangle {
+                anchors.fill: parent
+                visible: root.isCommandMode
+                color: "transparent"
 
-                Behavior on height {
-                    NumberAnimation {
-                        duration: Tokens.durationFast
-                        easing.type: Tokens.easingStandard.type
-                        easing.bezierCurve: Tokens.easingStandard.bezierCurve
-                    }
-                }
+                Column {
+                    anchors.centerIn: parent
+                    spacing: Tokens.spaceMd
+                    width: parent.width - Tokens.spaceXl
 
-                // Applications List View with full scrolling support
-                ListView {
-                    id: listView
-                    anchors.fill: parent
-                    anchors.margins: Tokens.spaceSm
-                    clip: true
-                    model: root.filteredApplications
-                    currentIndex: root.selectedIndex
-                    spacing: Tokens.spaceXxs
-                    visible: root.filteredApplications.length > 0
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    delegate: Rectangle {
-                        id: delegateCard
-                        required property var modelData
-                        required property int index
-
-                        readonly property bool isSelected: index === root.selectedIndex
-                        readonly property bool isHovered: itemMouse.containsMouse
-
-                        width: listView.width
-                        height: Config.launcherItemHeight
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width
+                        height: 64
                         radius: Tokens.radiusMd
-
-                        // Background highlighting
-                        color: {
-                            if (delegateCard.isSelected) return Theme.alpha(Theme.accent, 0.18);
-                            if (delegateCard.isHovered) return Theme.alpha(Theme.surface, 0.6);
-                            return "transparent";
-                        }
-
-                        border.width: delegateCard.isSelected ? Tokens.borderWidthThin : 0
+                        color: Theme.alpha(Theme.accent, 0.15)
                         border.color: Theme.accent
-
-                        Behavior on color {
-                            ColorAnimation { duration: Tokens.durationFast }
-                        }
+                        border.width: Tokens.borderWidthThin
 
                         Row {
                             anchors.fill: parent
-                            anchors.leftMargin: Tokens.spaceMd
-                            anchors.rightMargin: Tokens.spaceMd
+                            anchors.margins: Tokens.spaceMd
                             spacing: Tokens.spaceMd
 
-                            // Application Icon
-                            Item {
+                            Text {
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: 32
-                                height: 32
-
-                                IconImage {
-                                    id: appIcon
-                                    anchors.fill: parent
-                                    source: root.resolveIconSource(delegateCard.modelData ? delegateCard.modelData.icon : "")
-                                    visible: appIcon.status === Image.Ready
-                                }
-
-                                // Fallback Icon Glyph when image fails or is missing
-                                Text {
-                                    anchors.centerIn: parent
-                                    visible: appIcon.status !== Image.Ready
-                                    text: "󰣇"
-                                    font.family: Tokens.fontFamilyMono
-                                    font.pixelSize: Tokens.fontXl
-                                    color: delegateCard.isSelected ? Theme.accent : Theme.foreground
-                                    renderType: Text.NativeRendering
-                                }
+                                text: "󰆍"
+                                font.family: Tokens.fontFamilyMono
+                                font.pixelSize: 24
+                                color: Theme.accent
                             }
 
-                            // Application Name and Description
                             Column {
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 100
+                                width: parent.width - 60
                                 spacing: 2
 
                                 Text {
-                                    width: parent.width
-                                    text: delegateCard.modelData ? (delegateCard.modelData.name || "") : ""
-                                    font.family: Tokens.fontFamilySans
-                                    font.pixelSize: Tokens.fontBase
-                                    font.weight: delegateCard.isSelected ? Tokens.weightBold : Tokens.weightMedium
-                                    color: delegateCard.isSelected ? Theme.accent : Theme.foreground
+                                    text: root.commandText.length > 0 ? ("Run: " + root.commandText) : "Terminal Command Mode"
+                                    font.family: Tokens.fontFamilyMono
+                                    font.pixelSize: Tokens.fontSm
+                                    font.weight: Tokens.weightBold
+                                    color: Theme.foreground
                                     elide: Text.ElideRight
-                                    renderType: Text.NativeRendering
+                                    width: parent.width
                                 }
 
                                 Text {
-                                    width: parent.width
-                                    text: {
-                                        if (!delegateCard.modelData) return "";
-                                        return delegateCard.modelData.genericName || delegateCard.modelData.comment || delegateCard.modelData.id || "";
-                                    }
+                                    text: root.commandText.length > 0
+                                        ? ("Press Enter to execute in " + Config.terminalCommand)
+                                        : "Type a command to execute in terminal..."
                                     font.family: Tokens.fontFamilySans
-                                    font.pixelSize: Tokens.fontXs
+                                    font.pixelSize: 11
                                     color: Theme.mutedForeground
-                                    elide: Text.ElideRight
-                                    renderType: Text.NativeRendering
                                 }
                             }
-
-                            // Return Key Hint indicator
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "↵"
-                                font.family: Tokens.fontFamilySans
-                                font.pixelSize: Tokens.fontBase
-                                color: Theme.accent
-                                visible: delegateCard.isSelected
-                                renderType: Text.NativeRendering
-                            }
                         }
-
-                        MouseArea {
-                            id: itemMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            onEntered: {
-                                root.selectedIndex = delegateCard.index;
-                            }
-
-                            onClicked: {
-                                root.launchApp(delegateCard.modelData);
-                            }
-                        }
-                    }
-                }
-
-                // Empty Results State
-                Column {
-                    anchors.centerIn: parent
-                    spacing: Tokens.spaceSm
-                    visible: root.filteredApplications.length === 0
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: "󰮗"
-                        font.family: Tokens.fontFamilyMono
-                        font.pixelSize: Tokens.fontTitle
-                        color: Theme.mutedForeground
-                        renderType: Text.NativeRendering
-                    }
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.searchQuery.length > 0 ? "No applications found" : "No applications available"
-                        font.family: Tokens.fontFamilySans
-                        font.pixelSize: Tokens.fontSm
-                        font.weight: Tokens.weightMedium
-                        color: Theme.mutedForeground
-                        renderType: Text.NativeRendering
                     }
                 }
             }
 
-            // -----------------------------------------------------------------
-            // 3. KEYBOARD SHORTCUTS FOOTER
-            // -----------------------------------------------------------------
-            Item {
-                id: footerArea
-                width: parent.width
-                height: 38
+            // Empty Search State
+            Column {
+                anchors.centerIn: parent
+                spacing: Tokens.spaceSm
+                visible: !root.isCommandMode && root.filteredApplications.length === 0
 
-                // Divider line above footer
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    height: Tokens.borderWidthThin
-                    color: Theme.alpha(Theme.border, 0.4)
-                }
-
-                Row {
-                    anchors.fill: parent
-                    anchors.leftMargin: Tokens.spaceMd
-                    anchors.rightMargin: Tokens.spaceMd
-                    spacing: Tokens.spaceLg
-
-                    Row {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: Tokens.spaceXs
-
-                        Text {
-                            text: "↑↓"
-                            font.family: Tokens.fontFamilyMono
-                            font.pixelSize: Tokens.fontXs
-                            color: Theme.accent
-                        }
-                        Text {
-                            text: "Navigate"
-                            font.family: Tokens.fontFamilySans
-                            font.pixelSize: Tokens.fontXs
-                            color: Theme.mutedForeground
-                        }
-                    }
-
-                    Row {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: Tokens.spaceXs
-
-                        Text {
-                            text: "↵"
-                            font.family: Tokens.fontFamilyMono
-                            font.pixelSize: Tokens.fontXs
-                            color: Theme.accent
-                        }
-                        Text {
-                            text: "Launch"
-                            font.family: Tokens.fontFamilySans
-                            font.pixelSize: Tokens.fontXs
-                            color: Theme.mutedForeground
-                        }
-                    }
-
-                    Row {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: Tokens.spaceXs
-
-                        Text {
-                            text: "Esc"
-                            font.family: Tokens.fontFamilyMono
-                            font.pixelSize: Tokens.fontXs
-                            color: Theme.accent
-                        }
-                        Text {
-                            text: "Dismiss"
-                            font.family: Tokens.fontFamilySans
-                            font.pixelSize: Tokens.fontXs
-                            color: Theme.mutedForeground
-                        }
-                    }
-                }
-
-                // Application count badge
                 Text {
-                    anchors.right: parent.right
-                    anchors.rightMargin: Tokens.spaceMd
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.filteredApplications.length + " / " + root.allApplications.length
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "󰮗"
                     font.family: Tokens.fontFamilyMono
-                    font.pixelSize: Tokens.fontXs
-                    color: Theme.alpha(Theme.mutedForeground, 0.7)
+                    font.pixelSize: Tokens.fontTitle
+                    color: Theme.mutedForeground
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: root.searchQuery.length > 0 ? "No applications found" : "No applications available"
+                    font.family: Tokens.fontFamilySans
+                    font.pixelSize: Tokens.fontSm
+                    font.weight: Tokens.weightMedium
+                    color: Theme.mutedForeground
+                }
+            }
+        }
+
+        // =====================================================================
+        // 2. SEARCH & COMMAND INPUT CAPSULE (Pinned at the bottom)
+        // Matching primary visual reference: Type ">" for commands
+        // =====================================================================
+        Rectangle {
+            id: searchFooter
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: Tokens.spaceSm
+            height: 48
+            radius: Tokens.radiusFull
+            color: Theme.alpha(Theme.surface, 0.75)
+            border.color: (searchInput && searchInput.activeFocus) ? Theme.accent : (Theme.border ? Theme.alpha(Theme.border, 0.5) : "#313244")
+            border.width: Tokens.borderWidthThin
+
+            Row {
+                anchors.fill: parent
+                anchors.leftMargin: Tokens.spaceMd
+                anchors.rightMargin: Tokens.spaceMd
+                spacing: Tokens.spaceSm
+
+                // Search / Command Glyph
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.isCommandMode ? "󰆍" : "󰍉"
+                    font.family: Tokens.fontFamilyMono
+                    font.pixelSize: Tokens.fontBase
+                    color: (searchInput && searchInput.activeFocus) ? Theme.accent : (Theme.mutedForeground || "#a6adc8")
+
+                    Behavior on color {
+                        ColorAnimation { duration: Tokens.durationFast }
+                    }
+                }
+
+                // Search TextInput
+                TextInput {
+                    id: searchInput
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - 80
+                    font.family: Tokens.fontFamilySans
+                    font.pixelSize: Tokens.fontSm
+                    color: Theme.foreground
+                    clip: true
+                    selectByMouse: true
+
+                    // Placeholder Text
+                    Text {
+                        anchors.fill: parent
+                        text: 'Type ">" for commands'
+                        font.family: Tokens.fontFamilySans
+                        font.pixelSize: Tokens.fontSm
+                        color: Theme.alpha(Theme.mutedForeground, 0.6)
+                        visible: searchInput.text.length === 0
+                    }
+
+                    // Keyboard Navigation Handlers
+                    Keys.onDownPressed: {
+                        if (root.filteredApplications.length > 0) {
+                            root.selectedIndex = (root.selectedIndex + 1) % root.filteredApplications.length;
+                            listView.positionViewAtIndex(root.selectedIndex, ListView.Contain);
+                        }
+                    }
+
+                    Keys.onUpPressed: {
+                        if (root.filteredApplications.length > 0) {
+                            root.selectedIndex = (root.selectedIndex - 1 + root.filteredApplications.length) % root.filteredApplications.length;
+                            listView.positionViewAtIndex(root.selectedIndex, ListView.Contain);
+                        }
+                    }
+
+                    Keys.onReturnPressed: root.launchSelected()
+                    Keys.onEnterPressed: root.launchSelected()
+                    Keys.onEscapePressed: root.closeRequested()
+                }
+
+                // Clear Button (visible when text is entered)
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 20
+                    height: 20
+                    radius: Tokens.radiusFull
+                    visible: searchInput.text.length > 0
+                    color: clearMouse.containsMouse ? Theme.alpha(Theme.foreground, 0.2) : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        font.family: Tokens.fontFamilySans
+                        font.pixelSize: Tokens.fontXs
+                        color: Theme.mutedForeground
+                    }
+
+                    MouseArea {
+                        id: clearMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            searchInput.text = "";
+                            searchInput.forceActiveFocus();
+                        }
+                    }
+                }
+
+                // Iris Branding Logo Badge
+                Image {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 18
+                    height: 18
+                    source: Qt.resolvedUrl("../../assets/iris_logo/iris-small.svg")
+                    sourceSize.width: 18
+                    sourceSize.height: 18
+                    opacity: 0.65
                 }
             }
         }

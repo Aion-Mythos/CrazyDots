@@ -16,7 +16,7 @@ crazydots maintains persistent configuration in `~/.config/crazydots/config.json
 {
   "version": 1,
   "bar": {
-    "position": "top",
+    "position": "left",
     "height": 44,
     "floating": true,
     "margin": 8,
@@ -122,6 +122,8 @@ The bare desktop surface (`WallpaperSurface.qml`) listens for mouse double-click
 | `openPopover` | `name: string` | `boolean` | Opens specific popover |
 | `closePopover` | none | `boolean` | Closes any open popover |
 | `getActivePopover` | none | `string` | Returns name of currently open popover or `""` |
+| `isPopoverOpen` | none | `boolean` | Returns true if any contextual popover is open |
+| `isModalOpen` | none | `boolean` | Returns true if any modal or drawer is active |
 | `isNetworkAvailable`| none | `boolean` | Checks if `nmcli` backend is present |
 | `getWifiEnabled` | none | `boolean` | Checks if Wi-Fi radio is enabled |
 | `toggleWifi` | none | `boolean` | Toggles Wi-Fi radio on/off |

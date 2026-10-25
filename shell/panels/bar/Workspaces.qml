@@ -21,10 +21,11 @@ Item {
     // PUBLIC PROPERTIES
     // =========================================================================
     property var screen: null
+    property bool vertical: false
     readonly property var currentMonitor: root.screen ? Hyprland.monitorFor(root.screen) : null
 
-    implicitHeight: 28
-    implicitWidth: workspaceRow.implicitWidth
+    implicitHeight: root.vertical ? (workspaceLayout.implicitHeight || 28) : 28
+    implicitWidth: root.vertical ? 28 : (workspaceLayout.implicitWidth || 28)
 
     // Sorted and filtered list of visible workspaces
     readonly property var visibleWorkspaces: {
@@ -53,11 +54,13 @@ Item {
     }
 
     // =========================================================================
-    // WORKSPACE PILLS ROW
+    // WORKSPACE PILLS GRID (ADAPTIVE HORIZONTAL / VERTICAL)
     // =========================================================================
-    Row {
-        id: workspaceRow
-        anchors.verticalCenter: parent.verticalCenter
+    Grid {
+        id: workspaceLayout
+        anchors.centerIn: parent
+        columns: root.vertical ? 1 : Math.max(1, root.visibleWorkspaces.length)
+        rows: root.vertical ? Math.max(1, root.visibleWorkspaces.length) : 1
         spacing: Tokens.spaceXs
 
         Repeater {
@@ -77,14 +80,14 @@ Item {
                 readonly property bool isActive: ws.active || isFocused
 
                 width: pillRect.width
-                height: 28
+                height: pillRect.height
 
                 Rectangle {
                     id: pillRect
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 20
-                    // Elastic pill width: active workspace expands smoothly
-                    width: pillDelegate.isFocused ? 28 : (pillMouse.containsMouse ? 20 : 12)
+                    anchors.centerIn: parent
+                    // Elastic pill sizing: expands smoothly on active
+                    width: root.vertical ? 20 : (pillDelegate.isFocused ? 28 : (pillMouse.containsMouse ? 20 : 12))
+                    height: root.vertical ? (pillDelegate.isFocused ? 28 : (pillMouse.containsMouse ? 20 : 12)) : 20
                     radius: Tokens.radiusFull
 
                     color: {
@@ -97,8 +100,16 @@ Item {
                     border.width: Tokens.borderWidthThin
                     border.color: pillDelegate.isFocused ? Theme.accent : Theme.alpha(Theme.border, 0.6)
 
-                    // Elastic spring transition when width changes
+                    // Elastic spring transition when size changes
                     Behavior on width {
+                        NumberAnimation {
+                            duration: Tokens.durationNormal
+                            easing.type: Tokens.easingSpring.type
+                            easing.bezierCurve: Tokens.easingSpring.bezierCurve
+                        }
+                    }
+
+                    Behavior on height {
                         NumberAnimation {
                             duration: Tokens.durationNormal
                             easing.type: Tokens.easingSpring.type

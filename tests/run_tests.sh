@@ -45,7 +45,8 @@ qmllint -I "$SCRIPT_DIR/shell" \
     "$SCRIPT_DIR/shell/TestWallpaper.qml" \
     "$SCRIPT_DIR/shell/TestDashboard.qml" \
     "$SCRIPT_DIR/shell/TestHyprlandGhostty.qml" \
-    "$SCRIPT_DIR/shell/TestPopoversUX.qml"
+    "$SCRIPT_DIR/shell/TestPopoversUX.qml" \
+    "$SCRIPT_DIR/shell/TestM11BezelUX.qml"
 
 echo "==> qmllint passed with 0 errors!"
 
@@ -76,7 +77,10 @@ quickshell -p "$SCRIPT_DIR/shell/TestHyprlandGhostty.qml"
 echo "==> 10. Executing M10 Popovers & Desktop UX test suite in Quickshell..."
 quickshell -p "$SCRIPT_DIR/shell/TestPopoversUX.qml"
 
-echo "==> 11. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
+echo "==> 11. Executing M11 Bezel UX & Launcher Overhaul test suite in Quickshell..."
+quickshell -p "$SCRIPT_DIR/shell/TestM11BezelUX.qml"
+
+echo "==> 12. Verifying live Quickshell entry point (shell/shell.qml) & IPC..."
 # Start shell.qml in background with isolated config path
 quickshell -p "$SCRIPT_DIR/shell" &
 SHELL_PID=$!
@@ -238,7 +242,7 @@ if [[ "$IPC_TERM_AVAIL" != *"true"* || "$IPC_TERM_CMD" != *"ghostty"* ]]; then
     exit 1
 fi
 
-echo "==> 12. Verifying live environment integrity..."
+echo "==> 13. Verifying live environment integrity..."
 # Check that ~/.config/hypr and Caelestia are untouched
 if [[ ! -f "$HOME/.config/hypr/hyprland.lua" ]]; then
     echo "ERROR: ~/.config/hypr/hyprland.lua missing!" >&2

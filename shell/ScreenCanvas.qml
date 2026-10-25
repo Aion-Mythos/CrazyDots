@@ -71,6 +71,10 @@ PanelWindow {
         ? (Config.barHeight + (Config.barFloating ? Config.barMargin * 2 : 0) + Tokens.spaceSm)
         : Tokens.spaceMd
 
+    readonly property int barOffsetLeft: (Config.barPosition === "left")
+        ? (Config.barHeight + (Config.barFloating ? Config.barMargin * 2 : 0) + Tokens.spaceSm)
+        : Tokens.spaceMd
+
     readonly property int marginHorizontal: Tokens.spaceMd
 
     // =========================================================================
@@ -144,53 +148,52 @@ PanelWindow {
     // =========================================================================
     // 2. SHELL SLOTS: LAUNCHER, WALLPAPER MANAGER, & THEME MANAGER
     // =========================================================================
+    // Floating lower-middle Application Launcher (matching launcher_primary_reference.png)
+    Launcher {
+        id: launcherWidget
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Math.max(54, Math.round(parent.height * 0.08))
+        width: implicitWidth
+        height: implicitHeight
+        active: canvas.isLauncherActive
+        visible: canvas.isLauncherActive
+        opacity: canvas.isLauncherActive ? 1.0 : 0.0
+        scale: canvas.isLauncherActive ? 1.0 : 0.94
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                easing.type: Tokens.easingStandard.type
+                easing.bezierCurve: Tokens.easingStandard.bezierCurve
+            }
+        }
+
+        Behavior on scale {
+            NumberAnimation {
+                duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
+                easing.type: Tokens.easingSpring.type
+                easing.bezierCurve: Tokens.easingSpring.bezierCurve
+            }
+        }
+
+        onCloseRequested: canvas.launcherCloseRequested()
+
+        onActiveChanged: {
+            if (active) {
+                resetSearch();
+                focusSearch();
+            }
+        }
+    }
+
+    // Centered Modals: Wallpaper Manager & Theme Manager
     Item {
         id: centerSlot
         anchors.centerIn: parent
-        width: {
-            if (canvas.isWallpaperManagerActive) return wallpaperManagerWidget.implicitWidth;
-            if (canvas.isThemeManagerActive) return themeManagerWidget.implicitWidth;
-            return launcherWidget.implicitWidth;
-        }
-        height: {
-            if (canvas.isWallpaperManagerActive) return wallpaperManagerWidget.implicitHeight;
-            if (canvas.isThemeManagerActive) return themeManagerWidget.implicitHeight;
-            return launcherWidget.implicitHeight;
-        }
-
-        Launcher {
-            id: launcherWidget
-            anchors.centerIn: parent
-            active: canvas.isLauncherActive
-            visible: canvas.isLauncherActive
-            opacity: canvas.isLauncherActive ? 1.0 : 0.0
-            scale: canvas.isLauncherActive ? 1.0 : 0.94
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
-                    easing.type: Tokens.easingStandard.type
-                    easing.bezierCurve: Tokens.easingStandard.bezierCurve
-                }
-            }
-
-            Behavior on scale {
-                NumberAnimation {
-                    duration: Tokens.durationNormal * (Config.animationsEnabled ? Config.animationSpeed : 0)
-                    easing.type: Tokens.easingSpring.type
-                    easing.bezierCurve: Tokens.easingSpring.bezierCurve
-                }
-            }
-
-            onCloseRequested: canvas.launcherCloseRequested()
-
-            onActiveChanged: {
-                if (active) {
-                    resetSearch();
-                    focusSearch();
-                }
-            }
-        }
+        width: canvas.isWallpaperManagerActive ? wallpaperManagerWidget.implicitWidth : themeManagerWidget.implicitWidth
+        height: canvas.isWallpaperManagerActive ? wallpaperManagerWidget.implicitHeight : themeManagerWidget.implicitHeight
+        visible: canvas.isWallpaperManagerActive || canvas.isThemeManagerActive
 
         WallpaperManager {
             id: wallpaperManagerWidget
@@ -271,10 +274,10 @@ PanelWindow {
 
         anchors.topMargin: isTop ? canvas.barOffsetTop : 0
         anchors.bottomMargin: isTop ? 0 : canvas.barOffsetBottom
-        anchors.leftMargin: isLeft ? canvas.marginHorizontal : 0
+        anchors.leftMargin: isLeft ? (Config.barPosition === "left" ? canvas.barOffsetLeft : canvas.marginHorizontal) : 0
         anchors.rightMargin: isLeft ? 0 : canvas.marginHorizontal
 
-        width: Math.max(280, Math.min(Config.dashboardWidth, parent.width - canvas.marginHorizontal * 2))
+        width: Math.max(280, Math.min(Config.dashboardWidth, parent.width - (Config.barPosition === "left" ? canvas.barOffsetLeft : canvas.marginHorizontal) - canvas.marginHorizontal))
         height: Math.max(300, Math.min(Config.dashboardHeight, parent.height - canvas.barOffsetTop - canvas.barOffsetBottom))
 
         Dashboard {
@@ -318,17 +321,21 @@ PanelWindow {
 
     // =========================================================================
     // 4. CONTEXTUAL POPOVERS SLOT
-    // Anchored adjacent to the bar controls on the right side.
+    // Anchored adjacent to the bar controls on the right side, or lower-left if left dock.
     // =========================================================================
     Item {
         id: popoverSlot
+        readonly property bool isLeftDock: Config.barPosition === "left"
+
         anchors.top: (Config.barPosition === "top") ? parent.top : undefined
-        anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
-        anchors.right: parent.right
+        anchors.bottom: (Config.barPosition === "bottom" || isLeftDock) ? parent.bottom : undefined
+        anchors.left: isLeftDock ? parent.left : undefined
+        anchors.right: isLeftDock ? undefined : parent.right
 
         anchors.topMargin: (Config.barPosition === "top") ? canvas.barOffsetTop : 0
-        anchors.bottomMargin: (Config.barPosition === "bottom") ? canvas.barOffsetBottom : 0
-        anchors.rightMargin: canvas.marginHorizontal
+        anchors.bottomMargin: (Config.barPosition === "bottom") ? canvas.barOffsetBottom : (isLeftDock ? 16 : 0)
+        anchors.leftMargin: isLeftDock ? (canvas.barOffsetLeft + 8) : 0
+        anchors.rightMargin: isLeftDock ? 0 : canvas.marginHorizontal
 
         width: 350
         height: 400
@@ -336,8 +343,9 @@ PanelWindow {
 
         ConnectivityPopover {
             anchors.top: (Config.barPosition === "top") ? parent.top : undefined
-            anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
-            anchors.right: parent.right
+            anchors.bottom: (Config.barPosition === "bottom" || popoverSlot.isLeftDock) ? parent.bottom : undefined
+            anchors.left: popoverSlot.isLeftDock ? parent.left : undefined
+            anchors.right: popoverSlot.isLeftDock ? undefined : parent.right
             active: canvas.activePopover === "connectivity" && canvas.isCurrentMonitor
             visible: active
             networkService: canvas.networkService
@@ -346,8 +354,9 @@ PanelWindow {
 
         VolumePopover {
             anchors.top: (Config.barPosition === "top") ? parent.top : undefined
-            anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
-            anchors.right: parent.right
+            anchors.bottom: (Config.barPosition === "bottom" || popoverSlot.isLeftDock) ? parent.bottom : undefined
+            anchors.left: popoverSlot.isLeftDock ? parent.left : undefined
+            anchors.right: popoverSlot.isLeftDock ? undefined : parent.right
             active: canvas.activePopover === "volume" && canvas.isCurrentMonitor
             visible: active
             onCloseRequested: canvas.popoverCloseRequested()
@@ -355,8 +364,9 @@ PanelWindow {
 
         BrightnessPopover {
             anchors.top: (Config.barPosition === "top") ? parent.top : undefined
-            anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
-            anchors.right: parent.right
+            anchors.bottom: (Config.barPosition === "bottom" || popoverSlot.isLeftDock) ? parent.bottom : undefined
+            anchors.left: popoverSlot.isLeftDock ? parent.left : undefined
+            anchors.right: popoverSlot.isLeftDock ? undefined : parent.right
             active: canvas.activePopover === "brightness" && canvas.isCurrentMonitor
             visible: active
             brightnessService: canvas.brightnessService
@@ -365,8 +375,9 @@ PanelWindow {
 
         QuickTogglesPopover {
             anchors.top: (Config.barPosition === "top") ? parent.top : undefined
-            anchors.bottom: (Config.barPosition === "bottom") ? parent.bottom : undefined
-            anchors.right: parent.right
+            anchors.bottom: (Config.barPosition === "bottom" || popoverSlot.isLeftDock) ? parent.bottom : undefined
+            anchors.left: popoverSlot.isLeftDock ? parent.left : undefined
+            anchors.right: popoverSlot.isLeftDock ? undefined : parent.right
             active: canvas.activePopover === "quickToggles" && canvas.isCurrentMonitor
             visible: active
             networkService: canvas.networkService

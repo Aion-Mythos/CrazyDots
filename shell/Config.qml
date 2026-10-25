@@ -41,7 +41,7 @@ QtObject {
     // =========================================================================
     // 1. DESKTOP BAR PREFERENCES
     // =========================================================================
-    property string barPosition: "top"          // "top" or "bottom"
+    property string barPosition: "top"          // "top", "bottom", or "left"
     property int barHeight: 44                  // 24 to 120 pixels
     property bool barFloating: true             // Floating island bar vs docked edge
     property int barMargin: 8                   // 0 to 64 pixels edge margin
@@ -194,10 +194,10 @@ QtObject {
 
         // --- Bar validation ---
         if (raw.bar && typeof raw.bar === "object") {
-            if (raw.bar.position === "top" || raw.bar.position === "bottom") {
+            if (raw.bar.position === "top" || raw.bar.position === "bottom" || raw.bar.position === "left") {
                 res.bar.position = raw.bar.position;
             } else if (raw.bar.position !== undefined) {
-                root.validationWarning("bar.position", "Invalid position, expected 'top' or 'bottom'");
+                root.validationWarning("bar.position", "Invalid position, expected 'top', 'bottom', or 'left'");
             }
 
             if (typeof raw.bar.height === "number" && !isNaN(raw.bar.height)) {
@@ -498,7 +498,7 @@ QtObject {
     }
 
     function setBarPosition(pos: string): bool {
-        if (pos !== "top" && pos !== "bottom") return false;
+        if (pos !== "top" && pos !== "bottom" && pos !== "left") return false;
         if (root.barPosition === pos) return false;
         root.barPosition = pos;
         root.saveDebounced(350);

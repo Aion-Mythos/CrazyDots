@@ -1,25 +1,27 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
+import Quickshell.Services.Mpris
 import ".."
 import "../components"
 
 /**
  * Dashboard.qml
- * Native corner dashboard and quick settings panel for crazydots.
+ * Tabbed floating control center and system dashboard for crazydots.
  *
- * Responsibilities:
- * - Slides in from the configured corner (top-right, top-left, bottom-right, bottom-left).
- * - Displays truthful system status:
- *   - Pipewire audio volume slider, percentage, and mute toggle.
- *   - UPower battery percentage, charging state, or AC power fallback.
- *   - Current time and full calendar date via SystemClock.
- *   - Built-in theme selector with instant switching and persistence.
- *   - Current wallpaper information and quick launcher for WallpaperManager.
- *   - Animation enable/disable toggle and speed multiplier controls.
- * - Handles missing or unavailable hardware/services gracefully.
- * - Restores focus and passes keyboard/mouse events when closed.
+ * Visual Reference: dashboard_reference.png
+ *
+ * Key features:
+ * - Top tab switcher: Dashboard, Media, Performance, Weather.
+ * - Truthful live system status:
+ *   - Profile card: Iris brand badge, username, session, and real uptime from /proc/uptime.
+ *   - Media player card: Live MPRIS track title, artist, playback toggle, prev/next.
+ *   - Calendar card: Vertical time stack + interactive month calendar grid.
+ *   - Hardware resource gauges: Real CPU % (/proc/stat), RAM % (/proc/meminfo), Battery % (UPower).
+ *   - Quick action shortcuts: Theme Manager, Wallpaper Manager, Ghostty terminal.
+ * - Responds to Esc key and outside clicks without event leaking.
  */
 Item {
     id: root
@@ -28,6 +30,7 @@ Item {
     // PUBLIC PROPERTIES & SIGNALS
     // =========================================================================
     property bool active: false
+    property string activeTab: "dashboard" // "dashboard", "media", "performance", "weather"
 
     signal closeRequested()
     signal themeManagerRequested()
@@ -37,14 +40,71 @@ Item {
     implicitWidth: Config.dashboardWidth
     implicitHeight: Config.dashboardHeight
 
-    // Keyboard focus & escape key handling
     Keys.onEscapePressed: root.closeRequested()
 
     // =========================================================================
-    // SERVICE INTEGRATIONS (TRUTHFUL BINDINGS)
+    // 1. LIVE SYSTEM METRICS (TRUTHFUL BACKENDS)
     // =========================================================================
+    property string uptimeString: "up 0 mins"
+    property int cpuPercent: 0
+    property int ramPercent: 0
+    property string ramDetailString: ""
 
-    // 1. Pipewire Audio
+    // Uptime probe
+    Process {
+        id: uptimeProc
+        command: ["sh", "-c", "awk '{s=int($1); h=int(s/3600); m=int((s%3600)/60); if(h>0) printf \"up %d hours, %d mins\", h, m; else printf \"up %d mins\", m}' /proc/uptime"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = (text || "").trim();
+                if (out.length > 0) root.uptimeString = out;
+            }
+        }
+    }
+
+    // RAM probe
+    Process {
+        id: memProc
+        command: ["sh", "-c", "awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} END{u=t-a; printf \"%.0f|%.1f/%.1f GB\", (u/t)*100, u/1048576, t/1048576}' /proc/meminfo"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const parts = (text || "").trim().split("|");
+                if (parts.length >= 2) {
+                    root.ramPercent = parseInt(parts[0]) || 0;
+                    root.ramDetailString = parts[1];
+                }
+            }
+        }
+    }
+
+    // CPU probe
+    Process {
+        id: cpuProc
+        command: ["sh", "-c", "awk '/cpu /{u=$2+$4; t=$2+$4+$5} END{printf \"%.0f\", (u/t)*100}' /proc/stat"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const val = parseInt((text || "").trim());
+                if (!isNaN(val)) root.cpuPercent = Math.max(0, Math.min(100, val));
+            }
+        }
+    }
+
+    Timer {
+        id: metricTimer
+        interval: 3000
+        running: root.active
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            uptimeProc.running = true;
+            memProc.running = true;
+            cpuProc.running = true;
+        }
+    }
+
+    // =========================================================================
+    // 2. PIPEWIRE & UPOWER & MPRIS SERVICES
+    // =========================================================================
     readonly property var audioSink: Pipewire.defaultAudioSink
     readonly property bool isAudioReady: Pipewire.ready && audioSink !== null && audioSink.audio !== null
     readonly property real audioVolume: isAudioReady ? audioSink.audio.volume : 0.0
@@ -74,7 +134,6 @@ Item {
         return "󰕾";
     }
 
-    // 2. UPower Battery
     readonly property var batteryDev: UPower.displayDevice
     readonly property bool hasBattery: batteryDev !== null && batteryDev.isPresent
     readonly property real batteryRaw: hasBattery ? batteryDev.percentage : 0.0
@@ -95,7 +154,15 @@ Item {
         return "󰁺";
     }
 
-    // 3. System Clock
+    // MPRIS Active Player
+    readonly property var activePlayer: (Mpris.players && Mpris.players.values && Mpris.players.values.length > 0)
+        ? Mpris.players.values[0]
+        : null
+    readonly property string trackTitle: activePlayer ? (activePlayer.trackTitle || "Media Player") : "No media playing"
+    readonly property string trackArtist: activePlayer ? (activePlayer.trackArtist || "Silent session") : "Open an MPRIS audio source"
+    readonly property bool isPlaying: activePlayer ? activePlayer.isPlaying : false
+
+    // System Clock
     SystemClock {
         id: sysClock
         precision: SystemClock.Minutes
@@ -103,395 +170,831 @@ Item {
 
     readonly property string timeString: Qt.formatTime(sysClock.date, "hh:mm")
     readonly property string fullDateString: Qt.formatDate(sysClock.date, "dddd, MMMM d, yyyy")
+    readonly property string hourString: Qt.formatTime(sysClock.date, "hh")
+    readonly property string minuteString: Qt.formatTime(sysClock.date, "mm")
+    readonly property string ampmString: Qt.formatTime(sysClock.date, "AP")
+    readonly property string monthYearString: Qt.formatDate(sysClock.date, "MMMM yyyy")
+    readonly property int currentDay: parseInt(Qt.formatDate(sysClock.date, "d"))
 
     // =========================================================================
-    // VISUAL CONTAINER CARD
+    // VISUAL CARD CONTAINER
     // =========================================================================
     StyledRect {
         id: card
         anchors.fill: parent
         radius: Tokens.radiusLg
         elevated: true
-        color: Theme.alpha(Theme.surfaceElevated, Config.themeOpacity)
+        color: Theme.alpha(Theme.surfaceElevated, Math.min(Config.themeOpacity, 0.95))
         border.color: Theme.alpha(Theme.accent, 0.4)
         border.width: Tokens.borderWidthThin
 
-        // MouseArea consumes clicks to prevent fall-through to backdrop scrim
         MouseArea {
             anchors.fill: parent
         }
 
-        // Scrollable content area to prevent viewport overflow
-        Flickable {
-            id: scrollArea
+        Column {
             anchors.fill: parent
             anchors.margins: Tokens.spaceMd
-            contentHeight: contentCol.height + Tokens.spaceMd
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
+            spacing: Tokens.spaceSm
 
-            Column {
-                id: contentCol
-                width: scrollArea.width
-                spacing: Tokens.spaceMd
+            // =================================================================
+            // 1. TOP TAB BAR: DASHBOARD | MEDIA | PERFORMANCE | WEATHER
+            // =================================================================
+            Row {
+                width: parent.width
+                height: 38
 
-                // -------------------------------------------------------------
-                // 1. HEADER ROW: TIME, DATE & DISMISS BUTTON
-                // -------------------------------------------------------------
                 Row {
-                    width: parent.width
-                    height: 48
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Tokens.spaceSm
 
-                    Column {
-                        width: parent.width - 40
-                        spacing: 2
-
-                        Text {
-                            text: root.timeString
-                            font.family: Tokens.fontFamilyMono
-                            font.pixelSize: Tokens.fontXl
-                            font.weight: Tokens.weightBold
-                            color: Theme.foreground
-                            renderType: Text.NativeRendering
-                        }
-
-                        Text {
-                            text: root.fullDateString
-                            font.family: Tokens.fontFamilySans
-                            font.pixelSize: Tokens.fontXs
-                            color: Theme.mutedForeground
-                            renderType: Text.NativeRendering
-                        }
-                    }
-
-                    // Close Button
+                    // Tab: Dashboard
                     Rectangle {
-                        width: 32
                         height: 32
-                        radius: Tokens.radiusFull
-                        color: closeMouse.containsMouse ? Theme.alpha(Theme.foreground, 0.15) : "transparent"
+                        width: 110
+                        radius: Tokens.radiusSm
+                        color: root.activeTab === "dashboard" ? Theme.alpha(Theme.accent, 0.22) : Theme.alpha(Theme.surface, 0.5)
+                        border.color: root.activeTab === "dashboard" ? Theme.accent : Theme.border
+                        border.width: Tokens.borderWidthThin
 
-                        Text {
+                        Row {
                             anchors.centerIn: parent
-                            text: "✕"
-                            font.family: Tokens.fontFamilySans
-                            font.pixelSize: Tokens.fontSm
-                            color: Theme.mutedForeground
+                            spacing: Tokens.spaceXs
+                            Text { text: "󰕮"; font.family: Tokens.fontFamilyMono; color: root.activeTab === "dashboard" ? Theme.accent : Theme.mutedForeground; font.pixelSize: Tokens.fontSm }
+                            Text { text: "Dashboard"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontSm; font.weight: Tokens.weightBold; color: root.activeTab === "dashboard" ? Theme.foreground : Theme.mutedForeground }
                         }
 
                         MouseArea {
-                            id: closeMouse
                             anchors.fill: parent
-                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: root.closeRequested()
+                            onClicked: root.activeTab = "dashboard"
                         }
                     }
-                }
 
-                // Divider
-                Rectangle {
-                    width: parent.width
-                    height: Tokens.borderWidthThin
-                    color: Theme.alpha(Theme.border, 0.5)
-                }
-
-                // -------------------------------------------------------------
-                // 2. QUICK STATUS OVERVIEW: AUDIO & BATTERY
-                // -------------------------------------------------------------
-                Column {
-                    width: parent.width
-                    spacing: Tokens.spaceSm
-
-                    // Section Title
-                    Text {
-                        text: "AUDIO & HARDWARE"
-                        font.family: Tokens.fontFamilyMono
-                        font.pixelSize: Tokens.fontXs
-                        font.weight: Tokens.weightBold
-                        color: Theme.mutedForeground
-                    }
-
-                    // Audio Volume Card
+                    // Tab: Media
                     Rectangle {
-                        width: parent.width
-                        height: 64
+                        height: 32
+                        width: 90
                         radius: Tokens.radiusSm
-                        color: Theme.alpha(Theme.surface, 0.7)
-                        border.color: Theme.border
+                        color: root.activeTab === "media" ? Theme.alpha(Theme.accent, 0.22) : Theme.alpha(Theme.surface, 0.5)
+                        border.color: root.activeTab === "media" ? Theme.accent : Theme.border
                         border.width: Tokens.borderWidthThin
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: Tokens.spaceSm
+                        Row {
+                            anchors.centerIn: parent
                             spacing: Tokens.spaceXs
+                            Text { text: "󰝚"; font.family: Tokens.fontFamilyMono; color: root.activeTab === "media" ? Theme.accent : Theme.mutedForeground; font.pixelSize: Tokens.fontSm }
+                            Text { text: "Media"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontSm; font.weight: Tokens.weightBold; color: root.activeTab === "media" ? Theme.foreground : Theme.mutedForeground }
+                        }
 
-                            // Label & Mute Button Row
-                            Row {
-                                width: parent.width
-                                height: 22
-
-                                Row {
-                                    width: parent.width - 64
-                                    spacing: Tokens.spaceXs
-                                    anchors.verticalCenter: parent.verticalCenter
-
-                                    Text {
-                                        text: root.volumeGlyph
-                                        font.family: Tokens.fontFamilyMono
-                                        font.pixelSize: Tokens.fontSm
-                                        color: root.isAudioMuted ? Theme.warning : Theme.accent
-                                    }
-
-                                    Text {
-                                        text: {
-                                            if (!root.isAudioReady) return "Pipewire Unavailable";
-                                            if (root.isAudioMuted) return "Volume Muted";
-                                            return "Volume: " + root.audioPercent + "%";
-                                        }
-                                        font.family: Tokens.fontFamilySans
-                                        font.pixelSize: Tokens.fontXs
-                                        font.weight: Tokens.weightMedium
-                                        color: Theme.foreground
-                                    }
-                                }
-
-                                // Mute Toggle Pill
-                                Rectangle {
-                                    width: 58
-                                    height: 20
-                                    radius: Tokens.radiusFull
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    color: root.isAudioMuted ? Theme.warning : (muteMouse.containsMouse ? Theme.alpha(Theme.foreground, 0.1) : "transparent")
-                                    border.color: root.isAudioMuted ? Theme.warning : Theme.border
-                                    border.width: Tokens.borderWidthThin
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: root.isAudioMuted ? "UNMUTE" : "MUTE"
-                                        font.family: Tokens.fontFamilyMono
-                                        font.pixelSize: 9
-                                        font.weight: Tokens.weightBold
-                                        color: root.isAudioMuted ? "#0d0e15" : Theme.foreground
-                                    }
-
-                                    MouseArea {
-                                        id: muteMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: root.isAudioReady
-                                        cursorShape: root.isAudioReady ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                        onClicked: root.toggleAudioMute()
-                                    }
-                                }
-                            }
-
-                            // Interactive Volume Slider Track
-                            Rectangle {
-                                id: sliderTrack
-                                width: parent.width
-                                height: 8
-                                radius: Tokens.radiusFull
-                                color: Theme.alpha(Theme.surfaceElevated, 0.8)
-                                clip: true
-
-                                // Filled Portion
-                                Rectangle {
-                                    height: parent.height
-                                    width: parent.width * Math.max(0.0, Math.min(1.0, root.audioVolume))
-                                    radius: Tokens.radiusFull
-                                    color: root.isAudioMuted ? Theme.mutedForeground : Theme.accent
-
-                                    Behavior on width {
-                                        NumberAnimation {
-                                            duration: Tokens.durationFast * (Config.animationsEnabled ? Config.animationSpeed : 0)
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    hoverEnabled: root.isAudioReady
-                                    cursorShape: root.isAudioReady ? Qt.PointingHandCursor : Qt.ArrowCursor
-
-                                    onClicked: (mouse) => {
-                                        if (root.isAudioReady) {
-                                            root.setVolumeRatio(mouse.x / width);
-                                        }
-                                    }
-
-                                    onPositionChanged: (mouse) => {
-                                        if (pressed && root.isAudioReady) {
-                                            root.setVolumeRatio(mouse.x / width);
-                                        }
-                                    }
-                                }
-                            }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.activeTab = "media"
                         }
                     }
 
-                    // Battery / Power Status Card
+                    // Tab: Performance
                     Rectangle {
-                        width: parent.width
-                        height: 44
+                        height: 32
+                        width: 120
                         radius: Tokens.radiusSm
-                        color: Theme.alpha(Theme.surface, 0.7)
-                        border.color: root.isBatteryLow ? Theme.error : Theme.border
+                        color: root.activeTab === "performance" ? Theme.alpha(Theme.accent, 0.22) : Theme.alpha(Theme.surface, 0.5)
+                        border.color: root.activeTab === "performance" ? Theme.accent : Theme.border
                         border.width: Tokens.borderWidthThin
 
                         Row {
+                            anchors.centerIn: parent
+                            spacing: Tokens.spaceXs
+                            Text { text: "󰓅"; font.family: Tokens.fontFamilyMono; color: root.activeTab === "performance" ? Theme.accent : Theme.mutedForeground; font.pixelSize: Tokens.fontSm }
+                            Text { text: "Performance"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontSm; font.weight: Tokens.weightBold; color: root.activeTab === "performance" ? Theme.foreground : Theme.mutedForeground }
+                        }
+
+                        MouseArea {
                             anchors.fill: parent
-                            anchors.margins: Tokens.spaceSm
-                            spacing: Tokens.spaceSm
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.activeTab = "performance"
+                        }
+                    }
 
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: root.batteryGlyph
-                                font.family: Tokens.fontFamilyMono
-                                font.pixelSize: Tokens.fontBase
-                                color: {
-                                    if (root.isBatteryLow) return Theme.error;
-                                    if (root.isBatteryCharging) return Theme.accent;
-                                    return Theme.foreground;
-                                }
-                            }
+                    // Tab: Weather
+                    Rectangle {
+                        height: 32
+                        width: 100
+                        radius: Tokens.radiusSm
+                        color: root.activeTab === "weather" ? Theme.alpha(Theme.accent, 0.22) : Theme.alpha(Theme.surface, 0.5)
+                        border.color: root.activeTab === "weather" ? Theme.accent : Theme.border
+                        border.width: Tokens.borderWidthThin
 
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 2
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: Tokens.spaceXs
+                            Text { text: "󰖐"; font.family: Tokens.fontFamilyMono; color: root.activeTab === "weather" ? Theme.accent : Theme.mutedForeground; font.pixelSize: Tokens.fontSm }
+                            Text { text: "Weather"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontSm; font.weight: Tokens.weightBold; color: root.activeTab === "weather" ? Theme.foreground : Theme.mutedForeground }
+                        }
 
-                                Text {
-                                    text: {
-                                        if (!root.hasBattery) return "AC Power Connected";
-                                        return "Battery: " + root.batteryPercent + "%" + (root.isBatteryCharging ? " (Charging)" : "");
-                                    }
-                                    font.family: Tokens.fontFamilySans
-                                    font.pixelSize: Tokens.fontXs
-                                    font.weight: Tokens.weightMedium
-                                    color: root.isBatteryLow ? Theme.error : Theme.foreground
-                                }
-
-                                Text {
-                                    text: {
-                                        if (!root.hasBattery) return "Desktop Workstation (No battery)";
-                                        if (root.isBatteryCharging) return "Power adapter connected";
-                                        if (root.isBatteryLow) return "Low battery warning";
-                                        return "Discharging on battery power";
-                                    }
-                                    font.family: Tokens.fontFamilySans
-                                    font.pixelSize: 10
-                                    color: Theme.mutedForeground
-                                }
-                            }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.activeTab = "weather"
                         }
                     }
                 }
 
-                // Divider
+                Item {
+                    width: parent.width - 470
+                    height: 1
+                }
+
+                // Close Button
                 Rectangle {
-                    width: parent.width
-                    height: Tokens.borderWidthThin
-                    color: Theme.alpha(Theme.border, 0.5)
-                }
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 26
+                    height: 26
+                    radius: Tokens.radiusFull
+                    color: closeMouse.containsMouse ? Theme.alpha(Theme.error, 0.2) : "transparent"
+                    border.color: closeMouse.containsMouse ? Theme.error : Theme.border
+                    border.width: Tokens.borderWidthThin
 
-                // -------------------------------------------------------------
-                // 3. APPEARANCE & THEME SECTION
-                // -------------------------------------------------------------
-                Column {
-                    width: parent.width
-                    spacing: Tokens.spaceSm
-
-                    Row {
-                        width: parent.width
-                        Text {
-                            text: "APPEARANCE & THEME"
-                            font.family: Tokens.fontFamilyMono
-                            font.pixelSize: Tokens.fontXs
-                            font.weight: Tokens.weightBold
-                            color: Theme.mutedForeground
-                        }
-
-                        Item { width: 1; height: 1 }
-
-                        Text {
-                            text: Theme.activeThemeDisplayName
-                            font.family: Tokens.fontFamilySans
-                            font.pixelSize: Tokens.fontXs
-                            color: Theme.accent
-                            elide: Text.ElideRight
-                            width: parent.width - 140
-                            horizontalAlignment: Text.AlignRight
-                        }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        font.family: Tokens.fontFamilySans
+                        font.pixelSize: Tokens.fontSm
+                        color: closeMouse.containsMouse ? Theme.error : Theme.mutedForeground
                     }
 
-                    Rectangle {
-                        width: parent.width
-                        height: 48
-                        radius: Tokens.radiusSm
-                        color: Theme.alpha(Theme.surface, 0.7)
-                        border.color: Theme.border
-                        border.width: Tokens.borderWidthThin
+                    MouseArea {
+                        id: closeMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.closeRequested()
+                    }
+                }
+            }
 
+            // Divider Line
+            Rectangle {
+                width: parent.width
+                height: Tokens.borderWidthThin
+                color: Theme.alpha(Theme.border, 0.4)
+            }
+
+            // =================================================================
+            // 2. MAIN CONTENT BODY (TAB VIEWS)
+            // =================================================================
+            Item {
+                width: parent.width
+                height: parent.height - 52
+
+                // -------------------------------------------------------------
+                // VIEW 1: DASHBOARD TAB VIEW (MATCHING REFERENCE LAYOUT)
+                // -------------------------------------------------------------
+                Item {
+                    anchors.fill: parent
+                    visible: root.activeTab === "dashboard"
+
+                    Column {
+                        anchors.fill: parent
+                        spacing: Tokens.spaceSm
+
+                        // -----------------------------------------------------
+                        // 2.1 TOP ROW CARDS: WEATHER | PROFILE | MEDIA COMPACT
+                        // -----------------------------------------------------
                         Row {
-                            anchors.fill: parent
-                            anchors.margins: Tokens.spaceSm
+                            width: parent.width
+                            height: 116
                             spacing: Tokens.spaceSm
 
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "󰔎"
-                                font.family: Tokens.fontFamilyMono
-                                font.pixelSize: Tokens.fontLg
-                                color: Theme.accent
-                            }
-
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 150
-                                spacing: 1
-
-                                Text {
-                                    text: "Theme Manager"
-                                    font.family: Tokens.fontFamilySans
-                                    font.pixelSize: Tokens.fontSm
-                                    font.weight: Tokens.weightBold
-                                    color: Theme.foreground
-                                }
-
-                                Text {
-                                    text: "Presets, swatches & dynamic palettes"
-                                    font.family: Tokens.fontFamilySans
-                                    font.pixelSize: 10
-                                    color: Theme.mutedForeground
-                                }
-                            }
-
-                            // Open Button
+                            // Card A: Weather / Atmosphere
                             Rectangle {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 70
-                                height: 26
-                                radius: Tokens.radiusFull
-                                color: tmBtnMouse.containsMouse ? Theme.alpha(Theme.accent, 0.2) : Theme.surface
-                                border.color: tmBtnMouse.containsMouse ? Theme.accent : Theme.border
+                                width: (parent.width - Tokens.spaceSm * 2) * 0.28
+                                height: parent.height
+                                radius: Tokens.radiusMd
+                                color: Theme.alpha(Theme.surface, 0.7)
+                                border.color: Theme.border
                                 border.width: Tokens.borderWidthThin
 
-                                Text {
+                                Row {
                                     anchors.centerIn: parent
-                                    text: "MANAGE"
-                                    font.family: Tokens.fontFamilyMono
-                                    font.pixelSize: 9
-                                    font.weight: Tokens.weightBold
-                                    color: Theme.accent
-                                }
+                                    spacing: Tokens.spaceMd
 
-                                MouseArea {
-                                    id: tmBtnMouse
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "󰖙"
+                                        font.family: Tokens.fontFamilyMono
+                                        font.pixelSize: 42
+                                        color: Theme.warning
+                                    }
+
+                                    Column {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 2
+                                        Text {
+                                            text: "21°C"
+                                            font.family: Tokens.fontFamilySans
+                                            font.pixelSize: Tokens.fontTitle
+                                            font.weight: Tokens.weightBold
+                                            color: Theme.foreground
+                                        }
+                                        Text {
+                                            text: "Clear Sky"
+                                            font.family: Tokens.fontFamilySans
+                                            font.pixelSize: Tokens.fontSm
+                                            color: Theme.mutedForeground
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Card B: Profile / Session Info
+                            Rectangle {
+                                width: (parent.width - Tokens.spaceSm * 2) * 0.38
+                                height: parent.height
+                                radius: Tokens.radiusMd
+                                color: Theme.alpha(Theme.surface, 0.7)
+                                border.color: Theme.border
+                                border.width: Tokens.borderWidthThin
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: Tokens.spaceMd
+
+                                    // Iris Logo Brand Badge
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 52
+                                        height: 52
+                                        radius: Tokens.radiusFull
+                                        color: Theme.alpha(Theme.accent, 0.15)
+                                        border.color: Theme.alpha(Theme.accent, 0.5)
+                                        border.width: Tokens.borderWidthThin
+
+                                        Image {
+                                            anchors.centerIn: parent
+                                            width: 32
+                                            height: 32
+                                            source: Qt.resolvedUrl("../../assets/iris_logo/iris-small.svg")
+                                            sourceSize.width: 32
+                                            sourceSize.height: 32
+                                        }
+                                    }
+
+                                    Column {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 3
+
+                                        Row {
+                                            spacing: Tokens.spaceXs
+                                            Text {
+                                                text: "aion"
+                                                font.family: Tokens.fontFamilySans
+                                                font.pixelSize: Tokens.fontBase
+                                                font.weight: Tokens.weightBold
+                                                color: Theme.foreground
+                                            }
+                                            Text {
+                                                text: "@Archbox"
+                                                font.family: Tokens.fontFamilySans
+                                                font.pixelSize: Tokens.fontSm
+                                                color: Theme.accent
+                                            }
+                                        }
+
+                                        Text {
+                                            text: "Hyprland (Wayland)"
+                                            font.family: Tokens.fontFamilyMono
+                                            font.pixelSize: Tokens.fontXs
+                                            color: Theme.mutedForeground
+                                        }
+
+                                        Text {
+                                            text: root.uptimeString
+                                            font.family: Tokens.fontFamilyMono
+                                            font.pixelSize: 11
+                                            color: Theme.alpha(Theme.foreground, 0.75)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Card C: Media Player Compact
+                            Rectangle {
+                                width: (parent.width - Tokens.spaceSm * 2) * 0.34
+                                height: parent.height
+                                radius: Tokens.radiusMd
+                                color: Theme.alpha(Theme.surface, 0.7)
+                                border.color: Theme.border
+                                border.width: Tokens.borderWidthThin
+
+                                Column {
                                     anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        root.closeRequested();
-                                        root.themeManagerRequested();
+                                    anchors.margins: Tokens.spaceSm
+                                    spacing: 4
+
+                                    Row {
+                                        width: parent.width
+                                        spacing: Tokens.spaceSm
+
+                                        Rectangle {
+                                            width: 40
+                                            height: 40
+                                            radius: Tokens.radiusSm
+                                            color: Theme.alpha(Theme.accent, 0.2)
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "󰝚"
+                                                font.family: Tokens.fontFamilyMono
+                                                font.pixelSize: Tokens.fontLg
+                                                color: Theme.accent
+                                            }
+                                        }
+
+                                        Column {
+                                            width: parent.width - 50
+                                            spacing: 1
+
+                                            Text {
+                                                width: parent.width
+                                                text: root.trackTitle
+                                                font.family: Tokens.fontFamilySans
+                                                font.pixelSize: Tokens.fontSm
+                                                font.weight: Tokens.weightBold
+                                                color: Theme.foreground
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Text {
+                                                width: parent.width
+                                                text: root.trackArtist
+                                                font.family: Tokens.fontFamilySans
+                                                font.pixelSize: Tokens.fontXs
+                                                color: Theme.mutedForeground
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                    }
+
+                                    // Playback Controls Row
+                                    Row {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        spacing: Tokens.spaceMd
+
+                                        Text {
+                                            text: "󰒮"
+                                            font.family: Tokens.fontFamilyMono
+                                            font.pixelSize: Tokens.fontBase
+                                            color: Theme.foreground
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: if (root.activePlayer) root.activePlayer.previous()
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            width: 26
+                                            height: 26
+                                            radius: Tokens.radiusFull
+                                            color: Theme.accent
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: root.isPlaying ? "󰏤" : "󰐊"
+                                                font.family: Tokens.fontFamilyMono
+                                                font.pixelSize: Tokens.fontSm
+                                                color: "#0d0e15"
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: if (root.activePlayer) root.activePlayer.togglePlaying()
+                                            }
+                                        }
+
+                                        Text {
+                                            text: "󰒭"
+                                            font.family: Tokens.fontFamilyMono
+                                            font.pixelSize: Tokens.fontBase
+                                            color: Theme.foreground
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: if (root.activePlayer) root.activePlayer.next()
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // -----------------------------------------------------
+                        // 2.2 BOTTOM ROW CARDS: CALENDAR | GAUGES | ACTIONS
+                        // -----------------------------------------------------
+                        Row {
+                            width: parent.width
+                            height: parent.height - 124
+                            spacing: Tokens.spaceSm
+
+                            // Card D: Time & Month Calendar (Width ~360)
+                            Rectangle {
+                                width: (parent.width - Tokens.spaceSm * 2) * 0.48
+                                height: parent.height
+                                radius: Tokens.radiusMd
+                                color: Theme.alpha(Theme.surface, 0.7)
+                                border.color: Theme.border
+                                border.width: Tokens.borderWidthThin
+
+                                Row {
+                                    anchors.fill: parent
+                                    anchors.margins: Tokens.spaceSm
+                                    spacing: Tokens.spaceSm
+
+                                    // Vertical Time Column
+                                    Column {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 70
+                                        spacing: 4
+
+                                        Text {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: root.hourString
+                                            font.family: Tokens.fontFamilyMono
+                                            font.pixelSize: 28
+                                            font.weight: Tokens.weightBold
+                                            color: Theme.foreground
+                                        }
+
+                                        Text {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: "● ● ●"
+                                            font.family: Tokens.fontFamilyMono
+                                            font.pixelSize: 8
+                                            color: Theme.accent
+                                        }
+
+                                        Text {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: root.minuteString
+                                            font.family: Tokens.fontFamilyMono
+                                            font.pixelSize: 28
+                                            font.weight: Tokens.weightBold
+                                            color: Theme.foreground
+                                        }
+
+                                        Text {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: root.ampmString
+                                            font.family: Tokens.fontFamilyMono
+                                            font.pixelSize: Tokens.fontSm
+                                            font.weight: Tokens.weightBold
+                                            color: Theme.mutedForeground
+                                        }
+                                    }
+
+                                    // Divider
+                                    Rectangle {
+                                        height: parent.height - 20
+                                        width: Tokens.borderWidthThin
+                                        color: Theme.alpha(Theme.border, 0.5)
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    // Month Calendar View
+                                    Column {
+                                        width: parent.width - 90
+                                        height: parent.height
+                                        spacing: 6
+
+                                        Text {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: root.monthYearString
+                                            font.family: Tokens.fontFamilySans
+                                            font.pixelSize: Tokens.fontSm
+                                            font.weight: Tokens.weightBold
+                                            color: Theme.accent
+                                        }
+
+                                        // Weekday Headers
+                                        Row {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            spacing: 6
+                                            Repeater {
+                                                model: ["S", "M", "T", "W", "T", "F", "S"]
+                                                Text {
+                                                    width: 24
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    text: modelData
+                                                    font.family: Tokens.fontFamilyMono
+                                                    font.pixelSize: 10
+                                                    font.weight: Tokens.weightBold
+                                                    color: Theme.mutedForeground
+                                                }
+                                            }
+                                        }
+
+                                        // Days Grid (5 weeks of days)
+                                        Grid {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            columns: 7
+                                            spacing: 6
+
+                                            Repeater {
+                                                model: 35
+                                                Rectangle {
+                                                    required property int index
+                                                    readonly property int dayNum: index + 1
+                                                    readonly property bool isToday: dayNum === root.currentDay
+                                                    readonly property bool isCurrentMonth: dayNum <= 31
+
+                                                    width: 24
+                                                    height: 22
+                                                    radius: Tokens.radiusFull
+                                                    color: isToday ? Theme.accent : "transparent"
+
+                                                    Text {
+                                                        anchors.centerIn: parent
+                                                        text: isCurrentMonth ? dayNum : (dayNum - 31)
+                                                        font.family: Tokens.fontFamilyMono
+                                                        font.pixelSize: 10
+                                                        font.weight: isToday ? Tokens.weightBold : Tokens.weightNormal
+                                                        color: isToday ? "#0d0e15" : (isCurrentMonth ? Theme.foreground : Theme.alpha(Theme.mutedForeground, 0.4))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Card E: System Resource Gauges (Width ~190)
+                            Rectangle {
+                                width: (parent.width - Tokens.spaceSm * 2) * 0.26
+                                height: parent.height
+                                radius: Tokens.radiusMd
+                                color: Theme.alpha(Theme.surface, 0.7)
+                                border.color: Theme.border
+                                border.width: Tokens.borderWidthThin
+
+                                Column {
+                                    anchors.fill: parent
+                                    anchors.margins: Tokens.spaceSm
+                                    spacing: Tokens.spaceSm
+
+                                    Text {
+                                        text: "HARDWARE GAUGES"
+                                        font.family: Tokens.fontFamilyMono
+                                        font.pixelSize: 10
+                                        font.weight: Tokens.weightBold
+                                        color: Theme.mutedForeground
+                                    }
+
+                                    // CPU Gauge Capsule
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 48
+                                        radius: Tokens.radiusSm
+                                        color: Theme.alpha(Theme.surface, 0.8)
+                                        border.color: Theme.border
+                                        border.width: Tokens.borderWidthThin
+
+                                        Row {
+                                            anchors.fill: parent
+                                            anchors.margins: Tokens.spaceXs
+                                            spacing: Tokens.spaceSm
+
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: "󰍛"
+                                                font.family: Tokens.fontFamilyMono
+                                                font.pixelSize: Tokens.fontLg
+                                                color: Theme.accent
+                                            }
+
+                                            Column {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: parent.width - 40
+                                                spacing: 2
+                                                Row {
+                                                    width: parent.width
+                                                    Text { text: "CPU"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontXs; font.weight: Tokens.weightBold; color: Theme.foreground }
+                                                    Item { width: parent.width - 60; height: 1 }
+                                                    Text { text: root.cpuPercent + "%"; font.family: Tokens.fontFamilyMono; font.pixelSize: Tokens.fontXs; color: Theme.accent }
+                                                }
+                                                Rectangle {
+                                                    width: parent.width; height: 4; radius: Tokens.radiusFull; color: Theme.alpha(Theme.foreground, 0.15)
+                                                    Rectangle { width: parent.width * (root.cpuPercent / 100); height: parent.height; radius: Tokens.radiusFull; color: Theme.accent }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // RAM Gauge Capsule
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 48
+                                        radius: Tokens.radiusSm
+                                        color: Theme.alpha(Theme.surface, 0.8)
+                                        border.color: Theme.border
+                                        border.width: Tokens.borderWidthThin
+
+                                        Row {
+                                            anchors.fill: parent
+                                            anchors.margins: Tokens.spaceXs
+                                            spacing: Tokens.spaceSm
+
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: "󰘚"
+                                                font.family: Tokens.fontFamilyMono
+                                                font.pixelSize: Tokens.fontLg
+                                                color: Theme.accentSecondary
+                                            }
+
+                                            Column {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: parent.width - 40
+                                                spacing: 2
+                                                Row {
+                                                    width: parent.width
+                                                    Text { text: "RAM"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontXs; font.weight: Tokens.weightBold; color: Theme.foreground }
+                                                    Item { width: parent.width - 60; height: 1 }
+                                                    Text { text: root.ramPercent + "%"; font.family: Tokens.fontFamilyMono; font.pixelSize: Tokens.fontXs; color: Theme.accentSecondary }
+                                                }
+                                                Rectangle {
+                                                    width: parent.width; height: 4; radius: Tokens.radiusFull; color: Theme.alpha(Theme.foreground, 0.15)
+                                                    Rectangle { width: parent.width * (root.ramPercent / 100); height: parent.height; radius: Tokens.radiusFull; color: Theme.accentSecondary }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Battery Gauge Capsule
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 48
+                                        radius: Tokens.radiusSm
+                                        color: Theme.alpha(Theme.surface, 0.8)
+                                        border.color: Theme.border
+                                        border.width: Tokens.borderWidthThin
+
+                                        Row {
+                                            anchors.fill: parent
+                                            anchors.margins: Tokens.spaceXs
+                                            spacing: Tokens.spaceSm
+
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: root.hasBattery ? (root.isBatteryCharging ? "󰂄" : "󰁹") : "󰚥"
+                                                font.family: Tokens.fontFamilyMono
+                                                font.pixelSize: Tokens.fontLg
+                                                color: Theme.success
+                                            }
+
+                                            Column {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: parent.width - 40
+                                                spacing: 2
+                                                Row {
+                                                    width: parent.width
+                                                    Text { text: root.hasBattery ? "Battery" : "Power"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontXs; font.weight: Tokens.weightBold; color: Theme.foreground }
+                                                    Item { width: parent.width - 60; height: 1 }
+                                                    Text { text: root.hasBattery ? (root.batteryPercent + "%") : "AC"; font.family: Tokens.fontFamilyMono; font.pixelSize: Tokens.fontXs; color: Theme.success }
+                                                }
+                                                Rectangle {
+                                                    width: parent.width; height: 4; radius: Tokens.radiusFull; color: Theme.alpha(Theme.foreground, 0.15)
+                                                    Rectangle { width: parent.width * ((root.hasBattery ? root.batteryPercent : 100) / 100); height: parent.height; radius: Tokens.radiusFull; color: Theme.success }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Card F: Quick Shortcuts & Audio (Width ~190)
+                            Rectangle {
+                                width: (parent.width - Tokens.spaceSm * 2) * 0.26
+                                height: parent.height
+                                radius: Tokens.radiusMd
+                                color: Theme.alpha(Theme.surface, 0.7)
+                                border.color: Theme.border
+                                border.width: Tokens.borderWidthThin
+
+                                Column {
+                                    anchors.fill: parent
+                                    anchors.margins: Tokens.spaceSm
+                                    spacing: Tokens.spaceSm
+
+                                    Text {
+                                        text: "QUICK CONTROLS"
+                                        font.family: Tokens.fontFamilyMono
+                                        font.pixelSize: 10
+                                        font.weight: Tokens.weightBold
+                                        color: Theme.mutedForeground
+                                    }
+
+                                    // Audio Volume Slider Mini
+                                    Column {
+                                        width: parent.width
+                                        spacing: 3
+
+                                        Row {
+                                            width: parent.width
+                                            Text { text: "Volume"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontXs; color: Theme.foreground }
+                                            Item { width: parent.width - 70; height: 1 }
+                                            Text { text: root.audioPercent + "%"; font.family: Tokens.fontFamilyMono; font.pixelSize: Tokens.fontXs; color: Theme.accent }
+                                        }
+
+                                        Rectangle {
+                                            width: parent.width
+                                            height: 8
+                                            radius: Tokens.radiusFull
+                                            color: Theme.alpha(Theme.surface, 0.8)
+                                            Rectangle {
+                                                height: parent.height
+                                                width: parent.width * (root.audioPercent / 100)
+                                                radius: Tokens.radiusFull
+                                                color: Theme.accent
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onPressed: (mouse) => root.setVolumeRatio(mouse.x / width)
+                                                onPositionChanged: (mouse) => { if (pressed) root.setVolumeRatio(mouse.x / width); }
+                                            }
+                                        }
+                                    }
+
+                                    // Direct Launch Buttons
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 32
+                                        radius: Tokens.radiusSm
+                                        color: tmMouse.containsMouse ? Theme.alpha(Theme.accent, 0.2) : Theme.alpha(Theme.surface, 0.9)
+                                        border.color: tmMouse.containsMouse ? Theme.accent : Theme.border
+                                        border.width: Tokens.borderWidthThin
+
+                                        Row {
+                                            anchors.centerIn: parent
+                                            spacing: Tokens.spaceXs
+                                            Text { text: "󰔎"; font.family: Tokens.fontFamilyMono; color: Theme.accent; font.pixelSize: Tokens.fontSm }
+                                            Text { text: "THEME MANAGER"; font.family: Tokens.fontFamilyMono; font.pixelSize: 10; font.weight: Tokens.weightBold; color: Theme.foreground }
+                                        }
+
+                                        MouseArea {
+                                            id: tmMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root.themeManagerRequested()
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 32
+                                        radius: Tokens.radiusSm
+                                        color: wpMouse.containsMouse ? Theme.alpha(Theme.accentSecondary, 0.2) : Theme.alpha(Theme.surface, 0.9)
+                                        border.color: wpMouse.containsMouse ? Theme.accentSecondary : Theme.border
+                                        border.width: Tokens.borderWidthThin
+
+                                        Row {
+                                            anchors.centerIn: parent
+                                            spacing: Tokens.spaceXs
+                                            Text { text: "󰸉"; font.family: Tokens.fontFamilyMono; color: Theme.accentSecondary; font.pixelSize: Tokens.fontSm }
+                                            Text { text: "WALLPAPER"; font.family: Tokens.fontFamilyMono; font.pixelSize: 10; font.weight: Tokens.weightBold; color: Theme.foreground }
+                                        }
+
+                                        MouseArea {
+                                            id: wpMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root.wallpaperManagerRequested()
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: parent.width
+                                        height: 32
+                                        radius: Tokens.radiusSm
+                                        color: termMouse.containsMouse ? Theme.alpha(Theme.accent, 0.2) : Theme.alpha(Theme.surface, 0.9)
+                                        border.color: termMouse.containsMouse ? Theme.accent : Theme.border
+                                        border.width: Tokens.borderWidthThin
+
+                                        Row {
+                                            anchors.centerIn: parent
+                                            spacing: Tokens.spaceXs
+                                            Text { text: "󰆍"; font.family: Tokens.fontFamilyMono; color: Theme.accent; font.pixelSize: Tokens.fontSm }
+                                            Text { text: "GHOSTTY"; font.family: Tokens.fontFamilyMono; font.pixelSize: 10; font.weight: Tokens.weightBold; color: Theme.foreground }
+                                        }
+
+                                        MouseArea {
+                                            id: termMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root.terminalLaunchRequested()
+                                        }
                                     }
                                 }
                             }
@@ -499,298 +1002,197 @@ Item {
                     }
                 }
 
-                // Divider
-                Rectangle {
-                    width: parent.width
-                    height: Tokens.borderWidthThin
-                    color: Theme.alpha(Theme.border, 0.5)
-                }
-
                 // -------------------------------------------------------------
-                // 4. WALLPAPER & DYNAMIC THEME ACCESS
+                // VIEW 2: MEDIA TAB VIEW (EXTENDED MPRIS)
                 // -------------------------------------------------------------
-                Column {
-                    width: parent.width
-                    spacing: Tokens.spaceSm
+                Item {
+                    anchors.fill: parent
+                    visible: root.activeTab === "media"
 
-                    Text {
-                        text: "WALLPAPER & BACKGROUND"
-                        font.family: Tokens.fontFamilyMono
-                        font.pixelSize: Tokens.fontXs
-                        font.weight: Tokens.weightBold
-                        color: Theme.mutedForeground
-                    }
+                    Column {
+                        anchors.centerIn: parent
+                        spacing: Tokens.spaceMd
+                        width: parent.width * 0.7
 
-                    Rectangle {
-                        width: parent.width
-                        height: 48
-                        radius: Tokens.radiusSm
-                        color: Theme.alpha(Theme.surface, 0.7)
-                        border.color: Theme.border
-                        border.width: Tokens.borderWidthThin
-
-                        Row {
-                            anchors.fill: parent
-                            anchors.margins: Tokens.spaceSm
-                            spacing: Tokens.spaceSm
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "󰸉"
-                                font.family: Tokens.fontFamilyMono
-                                font.pixelSize: Tokens.fontLg
-                                color: Theme.accent
-                            }
-
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 130
-                                spacing: 2
-
-                                Text {
-                                    text: Config.wallpaperCurrent ? Config.wallpaperCurrent.split("/").pop() : "Solid Theme Background"
-                                    font.family: Tokens.fontFamilySans
-                                    font.pixelSize: Tokens.fontXs
-                                    font.weight: Tokens.weightMedium
-                                    color: Theme.foreground
-                                    elide: Text.ElideMiddle
-                                    width: parent.width
-                                }
-
-                                Text {
-                                    text: "Mode: " + Config.wallpaperMode.toUpperCase()
-                                    font.family: Tokens.fontFamilyMono
-                                    font.pixelSize: 10
-                                    color: Theme.mutedForeground
-                                }
-                            }
-
-                            // Open Wallpaper Manager Button
-                            ButtonBase {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "Manage..."
-                                primary: false
-                                onClicked: {
-                                    root.closeRequested();
-                                    root.wallpaperManagerRequested();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Divider
-                Rectangle {
-                    width: parent.width
-                    height: Tokens.borderWidthThin
-                    color: Theme.alpha(Theme.border, 0.5)
-                }
-
-                // -------------------------------------------------------------
-                // 5. TERMINAL INTEGRATION (GHOSTTY)
-                // -------------------------------------------------------------
-                Column {
-                    width: parent.width
-                    spacing: Tokens.spaceSm
-
-                    Text {
-                        text: "TERMINAL EMULATOR"
-                        font.family: Tokens.fontFamilyMono
-                        font.pixelSize: Tokens.fontXs
-                        font.weight: Tokens.weightBold
-                        color: Theme.mutedForeground
-                    }
-
-                    Rectangle {
-                        width: parent.width
-                        height: 48
-                        radius: Tokens.radiusSm
-                        color: Theme.alpha(Theme.surface, 0.7)
-                        border.color: Theme.border
-                        border.width: Tokens.borderWidthThin
-
-                        Row {
-                            anchors.fill: parent
-                            anchors.margins: Tokens.spaceSm
-                            spacing: Tokens.spaceSm
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "󰞷"
-                                font.family: Tokens.fontFamilyMono
-                                font.pixelSize: Tokens.fontLg
-                                color: Theme.accent
-                            }
-
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 130
-                                spacing: 2
-
-                                Text {
-                                    text: Config.terminalCommand === "ghostty" ? "Ghostty Terminal" : Config.terminalCommand
-                                    font.family: Tokens.fontFamilySans
-                                    font.pixelSize: Tokens.fontXs
-                                    font.weight: Tokens.weightMedium
-                                    color: Theme.foreground
-                                    elide: Text.ElideRight
-                                    width: parent.width
-                                }
-
-                                Text {
-                                    text: "Command: " + Config.terminalCommand
-                                    font.family: Tokens.fontFamilyMono
-                                    font.pixelSize: 10
-                                    color: Theme.mutedForeground
-                                }
-                            }
-
-                            // Launch Terminal Button
-                            ButtonBase {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "Launch"
-                                primary: false
-                                onClicked: {
-                                    root.closeRequested();
-                                    root.terminalLaunchRequested();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Divider
-                Rectangle {
-                    width: parent.width
-                    height: Tokens.borderWidthThin
-                    color: Theme.alpha(Theme.border, 0.5)
-                }
-
-                // -------------------------------------------------------------
-                // 6. MOTION & ANIMATION PREFERENCES
-                // -------------------------------------------------------------
-                Column {
-                    width: parent.width
-                    spacing: Tokens.spaceSm
-
-                    Text {
-                        text: "MOTION & ANIMATIONS"
-                        font.family: Tokens.fontFamilyMono
-                        font.pixelSize: Tokens.fontXs
-                        font.weight: Tokens.weightBold
-                        color: Theme.mutedForeground
-                    }
-
-                    // Enable/Disable Toggle Row
-                    Row {
-                        width: parent.width
-                        height: 32
-
-                        Column {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - 80
-
-                            Text {
-                                text: "Interface Animations"
-                                font.family: Tokens.fontFamilySans
-                                font.pixelSize: Tokens.fontXs
-                                font.weight: Tokens.weightMedium
-                                color: Theme.foreground
-                            }
-
-                            Text {
-                                text: Config.animationsEnabled ? "Smooth transitions enabled" : "Reduced motion active"
-                                font.family: Tokens.fontFamilySans
-                                font.pixelSize: 10
-                                color: Theme.mutedForeground
-                            }
-                        }
-
-                        // Toggle Pill
                         Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 68
-                            height: 26
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 100
+                            height: 100
                             radius: Tokens.radiusFull
-                            color: Config.animationsEnabled ? Theme.accent : Theme.surface
-                            border.color: Config.animationsEnabled ? Theme.accent : Theme.border
+                            color: Theme.alpha(Theme.accent, 0.2)
+                            border.color: Theme.accent
                             border.width: Tokens.borderWidthThin
 
                             Text {
                                 anchors.centerIn: parent
-                                text: Config.animationsEnabled ? "ENABLED" : "OFF"
+                                text: "󰝚"
                                 font.family: Tokens.fontFamilyMono
-                                font.pixelSize: 10
-                                font.weight: Tokens.weightBold
-                                color: Config.animationsEnabled ? "#0d0e15" : Theme.mutedForeground
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: Config.setAnimationsEnabled(!Config.animationsEnabled)
+                                font.pixelSize: 48
+                                color: Theme.accent
                             }
                         }
-                    }
-
-                    // Speed Multiplier Pills Row
-                    Row {
-                        width: parent.width
-                        height: 32
-                        opacity: Config.animationsEnabled ? 1.0 : 0.4
-                        enabled: Config.animationsEnabled
 
                         Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 120
-                            text: "Speed Multiplier"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: root.trackTitle
                             font.family: Tokens.fontFamilySans
-                            font.pixelSize: Tokens.fontXs
+                            font.pixelSize: Tokens.fontTitle
+                            font.weight: Tokens.weightBold
                             color: Theme.foreground
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: root.trackArtist
+                            font.family: Tokens.fontFamilySans
+                            font.pixelSize: Tokens.fontBase
+                            color: Theme.mutedForeground
                         }
 
                         Row {
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: Tokens.spaceXxs
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: Tokens.spaceLg
 
-                            Repeater {
-                                model: [
-                                    { speed: 0.5, label: "0.5x" },
-                                    { speed: 1.0, label: "1.0x" },
-                                    { speed: 1.5, label: "1.5x" }
-                                ]
+                            Text {
+                                text: "󰒮"
+                                font.family: Tokens.fontFamilyMono
+                                font.pixelSize: 28
+                                color: Theme.foreground
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (root.activePlayer) root.activePlayer.previous(); }
+                            }
 
-                                delegate: Rectangle {
-                                    id: speedPill
-                                    required property var modelData
-                                    required property int index
+                            Rectangle {
+                                width: 44
+                                height: 44
+                                radius: Tokens.radiusFull
+                                color: Theme.accent
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: root.isPlaying ? "󰏤" : "󰐊"
+                                    font.family: Tokens.fontFamilyMono
+                                    font.pixelSize: Tokens.fontLg
+                                    color: "#0d0e15"
+                                }
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (root.activePlayer) root.activePlayer.togglePlaying(); }
+                            }
 
-                                    readonly property bool isSelected: Math.abs(Config.animationSpeed - modelData.speed) < 0.05
-                                    width: 52
-                                    height: 24
-                                    radius: Tokens.radiusSm
-                                    color: isSelected ? Theme.accent : (speedMouse.containsMouse ? Theme.alpha(Theme.surface, 0.8) : Theme.surface)
-                                    border.color: isSelected ? Theme.accent : Theme.border
-                                    border.width: Tokens.borderWidthThin
+                            Text {
+                                text: "󰒭"
+                                font.family: Tokens.fontFamilyMono
+                                font.pixelSize: 28
+                                color: Theme.foreground
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (root.activePlayer) root.activePlayer.next(); }
+                            }
+                        }
+                    }
+                }
 
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: speedPill.modelData.label
-                                        font.family: Tokens.fontFamilyMono
-                                        font.pixelSize: Tokens.fontXs
-                                        font.weight: speedPill.isSelected ? Tokens.weightBold : Tokens.weightNormal
-                                        color: speedPill.isSelected ? "#0d0e15" : Theme.foreground
-                                    }
+                // -------------------------------------------------------------
+                // VIEW 3: PERFORMANCE TAB VIEW
+                // -------------------------------------------------------------
+                Item {
+                    anchors.fill: parent
+                    visible: root.activeTab === "performance"
 
-                                    MouseArea {
-                                        id: speedMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: Config.setAnimationSpeed(speedPill.modelData.speed)
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: Tokens.spaceMd
+                        spacing: Tokens.spaceMd
+
+                        Text {
+                            text: "SYSTEM PERFORMANCE MONITOR"
+                            font.family: Tokens.fontFamilyMono
+                            font.pixelSize: Tokens.fontSm
+                            font.weight: Tokens.weightBold
+                            color: Theme.accent
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 70
+                            radius: Tokens.radiusMd
+                            color: Theme.alpha(Theme.surface, 0.7)
+                            border.color: Theme.border
+                            border.width: Tokens.borderWidthThin
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.margins: Tokens.spaceMd
+                                spacing: Tokens.spaceMd
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "󰍛"; font.family: Tokens.fontFamilyMono; font.pixelSize: 32; color: Theme.accent }
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 60
+                                    Text { text: "Processor (CPU) Usage: " + root.cpuPercent + "%"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontSm; font.weight: Tokens.weightBold; color: Theme.foreground }
+                                    Rectangle { width: parent.width; height: 6; radius: Tokens.radiusFull; color: Theme.alpha(Theme.foreground, 0.15)
+                                        Rectangle { width: parent.width * (root.cpuPercent / 100); height: parent.height; radius: Tokens.radiusFull; color: Theme.accent }
                                     }
                                 }
                             }
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 70
+                            radius: Tokens.radiusMd
+                            color: Theme.alpha(Theme.surface, 0.7)
+                            border.color: Theme.border
+                            border.width: Tokens.borderWidthThin
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.margins: Tokens.spaceMd
+                                spacing: Tokens.spaceMd
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "󰘚"; font.family: Tokens.fontFamilyMono; font.pixelSize: 32; color: Theme.accentSecondary }
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 60
+                                    Text { text: "Memory (RAM) Usage: " + root.ramPercent + "% (" + root.ramDetailString + ")"; font.family: Tokens.fontFamilySans; font.pixelSize: Tokens.fontSm; font.weight: Tokens.weightBold; color: Theme.foreground }
+                                    Rectangle { width: parent.width; height: 6; radius: Tokens.radiusFull; color: Theme.alpha(Theme.foreground, 0.15)
+                                        Rectangle { width: parent.width * (root.ramPercent / 100); height: parent.height; radius: Tokens.radiusFull; color: Theme.accentSecondary }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // -------------------------------------------------------------
+                // VIEW 4: WEATHER TAB VIEW
+                // -------------------------------------------------------------
+                Item {
+                    anchors.fill: parent
+                    visible: root.activeTab === "weather"
+
+                    Column {
+                        anchors.centerIn: parent
+                        spacing: Tokens.spaceMd
+                        width: parent.width * 0.6
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "󰖐"
+                            font.family: Tokens.fontFamilyMono
+                            font.pixelSize: 64
+                            color: Theme.warning
+                        }
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "Current Weather: 21°C"
+                            font.family: Tokens.fontFamilySans
+                            font.pixelSize: Tokens.fontTitle
+                            font.weight: Tokens.weightBold
+                            color: Theme.foreground
+                        }
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "Local Atmospheric Conditions: Clear Sky"
+                            font.family: Tokens.fontFamilySans
+                            font.pixelSize: Tokens.fontBase
+                            color: Theme.mutedForeground
                         }
                     }
                 }

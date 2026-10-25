@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [1.2.0] - 2026-10-25 - Milestone M11: Interactive Bezel, Contextual Popovers & Launcher Visual Overhaul
+
+#### Added
+- **Iris Brand Assets Integration (`assets/iris_logo/`)**:
+  - Imported and preserved original `iris.svg`, `iris-mono.svg`, and `iris-small.svg` bit-for-bit.
+  - Integrated Iris branding mark into Application Launcher search capsule, Desktop Bar launcher trigger, and Dashboard profile card.
+- **Inverted Application Launcher (`shell/panels/Launcher.qml`)**:
+  - Restyled and repositioned launcher floating in lower-middle display area (540×480) strictly following `launcher_primary_reference.png` (`image(9).png`).
+  - Implemented inverted layout: full application catalog unconstrained at top with smooth scroll viewport, and search capsule pinned at the bottom.
+  - Added rounded search capsule with search/terminal glyph, placeholder `Type ">" for commands`, and Iris logo badge.
+  - Built working Command Mode (`>`): typing `> <command>` transitions to command execution tile and executes the command directly in Ghostty terminal emulator upon pressing Enter.
+- **Tabbed Floating Dashboard (`shell/panels/Dashboard.qml`)**:
+  - Re-architected dashboard window (740×520) matching `dashboard_reference.png`.
+  - Added top tab bar with 4 views: Dashboard, Media, Performance, and Weather.
+  - Live Profile card with Iris badge, username, session type, and truthful uptime parsed from `/proc/uptime`.
+  - Live MPRIS Media Player card with track title, artist, playback toggle, previous, and next controls.
+  - Live Calendar widget with vertical time stack and interactive month date grid highlighting current day.
+  - Real hardware gauges reporting CPU usage from `/proc/stat`, RAM usage from `/proc/meminfo`, and Battery percentage from UPower.
+  - Direct action buttons for Theme Manager, Wallpaper Manager, and Ghostty terminal.
+- **Left Bezel Dock Support (`shell/panels/Bar.qml` & `shell/panels/bar/Workspaces.qml`)**:
+  - Added `"left"` orientation support to `Config.qml` schema and `setBarPosition("left")`.
+  - Configured `Bar.qml` layer-shell anchors, exclusive zone, and layout for left-screen vertical dock bezel.
+  - Updated `Workspaces.qml` with `property bool vertical` for responsive vertical stacking of workspace pills.
+  - Added dedicated Iris launcher trigger button and bottom vertical hotspots for Network, Volume, Battery, Quick Toggles, and Dashboard.
+- **Left Dock Popover Positioning (`shell/ScreenCanvas.qml`)**:
+  - Added adaptive anchoring for `popoverSlot` and `cornerSlot` adjacent to the left-bezel dock when `Config.barPosition === "left"`.
+- **M11 Automated Test Suite (`shell/TestM11BezelUX.qml`)**:
+  - 36 new assertions verifying Iris asset integrity, inverted launcher geometry, bottom search capsule, command mode, full app catalog, tabbed dashboard views, uptime, calendar, left dock positioning, and modal exclusivity.
+  - Total automated test coverage expanded to **345 passing assertions across 13 suites with 0 failures**.
+
 ### [1.1.0] - 2026-10-25 - Milestone M10: Interactive Popovers & Desktop UX Fixes
 
 #### Fixed

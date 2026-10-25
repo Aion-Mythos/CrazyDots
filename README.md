@@ -8,10 +8,12 @@
 
 ## Features
 
-- **Cohesive Desktop Bar**: Workspaces, active window title, system tray (StatusNotifierItem), clock, battery, network status, quick toggles, and PipeWire audio volume.
-- **Native Application Launcher**: Fast fuzzy search across XDG desktop entries (`DesktopEntries`) with keyboard navigation, full unconstrained scrolling, and smooth entrance transitions.
+- **Interactive Edge Bezel & Left Dock**: Configurable horizontal bar (top/bottom) or vertical left-bezel dock with Iris branding button, vertical workspaces, active window title, and bottom hotspots (Connectivity, Volume, Battery, Quick Toggles, Dashboard).
+- **Inverted Application Launcher**: Floating lower-middle panel (540×480) strictly following `launcher_primary_reference.png` (`image(9).png`). Shows full unconstrained application catalog on top with smooth scrolling, rounded search capsule at bottom (`Type ">" for commands`), and working command mode (`> <cmd>`) executing inside Ghostty.
+- **Tabbed Floating Dashboard**: High-fidelity control center (740×520) matching `dashboard_reference.png` with 4 tabs (Dashboard, Media, Performance, Weather), live uptime from `/proc/uptime`, month calendar with date highlight, live hardware gauges (CPU, RAM, Battery), and MPRIS playback controls.
+- **Iris Brand Identity**: Original `iris.svg`, `iris-mono.svg`, and `iris-small.svg` assets preserved bit-for-bit and seamlessly integrated into launcher, bar, and dashboard.
 - **Dedicated Theme Manager**: Modal manager dialog (620×520) with active palette swatches, 8 curated theme presets, and dynamic wallpaper palette generation.
-- **Contextual Popovers**: Compact drawers anchored next to bar controls:
+- **Contextual Popovers**: Compact drawers anchored next to bar controls (adaptive for top, bottom, or left dock):
   - **Connectivity**: NetworkManager Wi-Fi status, scan list, radio toggle, and truthful Bluetooth daemon state.
   - **Volume**: PipeWire master output slider, mute toggle, microphone level, and mic mute toggle.
   - **Brightness**: Hardware backlight slider (`brightnessctl`) with percentage, device name, and unavailable state handling.
@@ -52,6 +54,7 @@ crazydots/
 ├── uninstall.sh               # Safe removal script
 ├── packages.txt               # Tiered dependency manifest
 ├── assets/                    # Assets and default vector wallpapers
+│   ├── iris_logo/             # Preserved bit-for-bit Iris branding marks (iris, iris-mono, iris-small)
 │   └── wallpapers/            # Bundled SVG wallpapers
 ├── docs/                      # Technical documentation
 │   ├── ARCHITECTURE.md        # Crazydots internal architecture and pure QML stack
@@ -74,7 +77,7 @@ crazydots/
 │   ├── ScreenCanvas.qml       # Per-monitor static layer-shell window & modal coordinator
 │   └── Main.qml               # Shell coordinator & IPC handler
 ├── tests/                     # Automated test suites
-│   └── run_tests.sh           # End-to-end test runner (309 assertions across 12 suites)
+│   └── run_tests.sh           # End-to-end test runner (345 assertions across 13 suites)
 └── themes/                    # Built-in static JSON themes (8 presets)
 ```
 
@@ -94,6 +97,7 @@ The crazydots engineering lifecycle executes in sequential milestones:
 - **M8**: Hyprland & Ghostty Integration
 - **M9**: Verification, Documentation & Polish
 - **M10**: Interactive Popovers & Desktop UX Fixes
+- **M11**: Interactive Bezel, Contextual Popovers & Launcher Visual Overhaul
 
 ---
 
@@ -107,7 +111,7 @@ To run the shell in isolation:
 quickshell -p ~/crazydots/shell
 ```
 
-To run the complete automated test suite (309 assertions + static analysis):
+To run the complete automated test suite (345 assertions + static analysis):
 
 ```bash
 ./tests/run_tests.sh

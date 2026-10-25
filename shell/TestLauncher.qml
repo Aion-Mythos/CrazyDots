@@ -94,8 +94,8 @@ Item {
 
             // 2. Default & Query Search Filtering Tests
             testRoot.assert(Array.isArray(testLauncher.filteredApplications), "Launcher provides filteredApplications array");
-            testRoot.assert(testLauncher.filteredApplications.length <= Config.launcherMaxResults,
-                            "Filtered applications count (" + testLauncher.filteredApplications.length + ") does not exceed Config.launcherMaxResults (" + Config.launcherMaxResults + ")");
+            testRoot.assert(testLauncher.filteredApplications.length === testLauncher.allApplications.length,
+                            "Initial filteredApplications exposes full catalog (" + testLauncher.filteredApplications.length + " apps) without artificial truncation");
 
             // Search by name
             testLauncher.searchQuery = "ghostty";

@@ -146,6 +146,14 @@ Item {
         return root.activePopover;
     }
 
+    function isPopoverOpen(): bool {
+        return root.activePopover.length > 0;
+    }
+
+    function isModalOpen(): bool {
+        return root.launcherOpen || root.wallpaperManagerOpen || root.themeManagerOpen || root.dashboardOpen || (root.activePopover.length > 0);
+    }
+
     // =========================================================================
     // SERVICE SINGLETONS
     // =========================================================================
@@ -363,6 +371,14 @@ Item {
 
         function getActivePopover(): string {
             return root.getActivePopover();
+        }
+
+        function isPopoverOpen(): bool {
+            return root.isPopoverOpen();
+        }
+
+        function isModalOpen(): bool {
+            return root.isModalOpen();
         }
 
         // Connectivity & Network IPC API
