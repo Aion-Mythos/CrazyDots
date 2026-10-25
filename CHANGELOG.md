@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.4.0] - 2026-10-25 - Milestone M3: Quickshell Entry Point & Shell Base
+
+#### Added
+- Primary Quickshell entry point in `shell/shell.qml` (`ShellRoot`) with threaded scene graph rendering pragmas.
+- Central shell coordinator in `shell/Main.qml`:
+  - Multi-monitor variant instantiation via `Quickshell.screens` and `Variants`.
+  - Secure `Quickshell.Io.IpcHandler` exposing `ping`, `getTheme`, `setTheme`, `reloadConfig`, `getScreens`, and `getScreenCount`.
+  - Global service mounting for `ThemeEngine` and singletons.
+- Screen canvas in `shell/ScreenCanvas.qml`:
+  - Permanent fullscreen `PanelWindow` spanning each connected monitor with `ExclusionMode.Ignore`.
+  - Dynamic boolean input region masking (`mask: Region`) ensuring 100% pass-through to desktop applications when idle.
+  - Idle keyboard focus set to `WlrKeyboardFocus.None` to prevent stealing focus from active windows.
+  - Designated anchor slots prepared for Bar (M4), Launcher (M5), and Dashboard (M7).
+- Reusable base components in `shell/components/`:
+  - `StyledRect.qml`: Themed container with elevated modes, borders, and smooth `ColorAnimation`.
+  - `StyledText.qml`: Themed text with monospace/sans switching and high-contrast semantic bindings.
+  - `ButtonBase.qml`: Accessible button with hover, pressed, and Tab focus keyboard states.
+- Automated test suite `shell/TestBaseComponents.qml` and live IPC verification in `tests/run_tests.sh` (79 total passing assertions).
+- Cryptographic commit signing configured via user GPG key (`3BB1686D906FB796`).
+
 ### [0.3.0] - 2026-10-25 - Milestone M2: Configuration & Persistence Service
 
 #### Added

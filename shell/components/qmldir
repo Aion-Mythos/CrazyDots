@@ -1,0 +1,4 @@
+module crazydots.components
+StyledRect 1.0 StyledRect.qml
+StyledText 1.0 StyledText.qml
+ButtonBase 1.0 ButtonBase.qml

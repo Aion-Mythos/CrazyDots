@@ -2,3 +2,5 @@ module crazydots
 singleton Tokens 1.0 Tokens.qml
 singleton Theme 1.0 Theme.qml
 singleton Config 1.0 Config.qml
+Main 1.0 Main.qml
+ScreenCanvas 1.0 ScreenCanvas.qml
